@@ -766,6 +766,11 @@ async function confirmFolderPermission(zone){
   else{ renderDirRow(zone,'denied'); }
 }
 function disconnectFolder(zone,silent){
+  if(!silent){
+    var folderName=DIRHANDLE[zone]&&DIRHANDLE[zone].name;
+    var message='ต้องการยกเลิกการเชื่อมต่อโฟลเดอร์'+(folderName?' "'+folderName+'"':'')+' จริงหรือไม่?\n\nไฟล์ที่อ่านจากโฟลเดอร์นี้จะถูกนำออกจากการตรวจสอบ';
+    if(!window.confirm(message))return;
+  }
   ZONESRC[zone]=null; DIRHANDLE[zone]=null;
   idbDel(zone).catch(function(){});
   if(zone==='master')MASTERFILES={}; else PRFILES={};   /* เคลียร์ไฟล์ที่มาจากโฟลเดอร์เดิมทิ้งเสมอ ไม่ว่า silent หรือไม่ */
