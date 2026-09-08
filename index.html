@@ -327,7 +327,25 @@ function worst(a,b){var o={ok:0,warn:1,bad:2};return o[b]>o[a]?b:a}
 
 /* ================= state ================= */
 var DB=null, RAW=[], SEEN={}, LASTRES=null, CHECK={};
-var CFG={lvl:{}};
+var STATUS_RULES_KEY='component_checker_status_rules_v1';
+function loadStatusRules(){
+  try{
+    var saved=JSON.parse(window.localStorage.getItem(STATUS_RULES_KEY)||'{}');
+    if(!saved||typeof saved!=='object')return {};
+    Object.keys(saved).forEach(function(k){if(saved[k]!=='warn'&&saved[k]!=='bad')delete saved[k]});
+    return saved;
+  }catch(e){return {}}
+}
+var CFG={lvl:loadStatusRules()};
+function setStatusLevel(status,level){
+  var key=nk(status);
+  CFG.lvl[key]=level;
+  try{window.localStorage.setItem(STATUS_RULES_KEY,JSON.stringify(CFG.lvl));}catch(e){}
+}
+function ensureStatusRules(){
+  if(!DB)return;
+  DB.statusN.forEach(function(g,S){if(CFG.lvl[S]==null)CFG.lvl[S]=guessLevel(S)});
+}
 /* กฎสำหรับ status ที่ "พบ" ใน Discon Master เท่านั้น (การไม่พบในไฟล์นี้เลยถือเป็น 'ok' เสมอ โดยไม่ผ่านฟังก์ชันนี้)
    ยืนยันจาก Biin แล้วว่า: To be discontinued = ห้ามเด็ดขาด (แดง), Old design = แค่เตือน (เหลือง) */
 function guessLevel(S){
@@ -832,7 +850,7 @@ window.addEventListener('focus',function(){
 });
 function finish(errs,all){
   DB=build(RAW);
-  CFG.lvl={}; DB.statusN.forEach(function(g,S){CFG.lvl[S]=guessLevel(S)});
+  ensureStatusRules();
   MT.filter=''; MT.codes=[]; MT.stat={}; MT.levelFilter=null; MT.onlyIssue=false; MT.shown=0;
   MT.sort=DB.hasTx?{k:'deliveryDate',dir:-1}:{k:'comp',dir:1};
   $('prog').firstChild.style.width='100%';
@@ -872,7 +890,7 @@ function remap(ti,field,ci){
   t.auto=false;
   t.months=(t.kind==='forecast')?monthCols(t.header,t.cols):[];
   DB=build(RAW);
-  DB.statusN.forEach(function(g,S){if(CFG.lvl[S]==null)CFG.lvl[S]=guessLevel(S)});
+  ensureStatusRules();
   MT.shown=0; renderAll(); if(MT.codes.length)runSearch();
 }
 
@@ -1150,7 +1168,7 @@ function renderCheck(){
     var S=p[0],g=p[1],js=jq(S);
     var opts=['warn','bad'].map(function(l){
       return '<label style="margin-right:12px"><input type="radio" name="lv_'+strip(S)+'" '+(CFG.lvl[S]===l?'checked':'')+
-        ' onchange="CFG.lvl['+js+']=\''+l+'\';renderAll();if(MT.codes.length)runSearch()"> <span class="tag '+LVLTAG[l]+'">'+LVLNAME[l]+'</span></label>';
+        ' onchange="setStatusLevel('+js+',\''+l+'\');renderAll();if(MT.codes.length)runSearch()"> <span class="tag '+LVLTAG[l]+'">'+LVLNAME[l]+'</span></label>';
     }).join('');
     var vs=Object.keys(g.variants);
     return '<tr><td>'+esc(S===''?'(ว่าง)':S)+(vs.length>1?'<br><span class="muted small">รวมการสะกด '+vs.length+' แบบ: '+esc(vs.join(' / '))+'</span>':'')+
@@ -1192,7 +1210,8 @@ function renderCheck(){
     '</div></div>'+
     '<div class="card"><h2>ตั้งกฎ: status แต่ละค่าอยู่ระดับไหน <button class="q" onclick="info(\'status\')">?</button></h2>'+
       '<div class="muted small" style="margin-bottom:8px">ค่าที่เลือกไว้ให้เป็นแค่การเดาจากคำ — <b>กรุณายืนยันเอง</b> เพราะไฟเขียว/เหลือง/แดงทั้งเครื่องมือ (รวมทั้งกล่อง "PR ที่เปิดผิด" ด้านบน) อิงตามตารางนี้ ทุกค่าที่อยู่ใน watch list ถือว่าไม่ ok อยู่แล้วโดยธรรมชาติ เลือกได้แค่ "แค่เตือน" หรือ "ห้ามเด็ดขาด"<br>'+
-      'การสะกดต่างกัน เช่น <code>Old design</code> กับ <code>OLD DESIGN</code> ระบบรวมเป็นค่าเดียวกันให้แล้ว จะได้ไม่ต้องตั้งกฎซ้ำ</div>'+
+      'การสะกดต่างกัน เช่น <code>Old design</code> กับ <code>OLD DESIGN</code> ระบบรวมเป็นค่าเดียวกันให้แล้ว จะได้ไม่ต้องตั้งกฎซ้ำ<br>'+
+      '<span class="tag t-ok">บันทึกค่าที่เลือกไว้ใน Local Storage ของเครื่องนี้</span> เมื่อเปิดไฟล์หรืออัปโหลดข้อมูลใหม่ ค่าที่เคยตั้งจะถูกนำกลับมาใช้</div>'+
       '<table style="width:auto"><thead><tr><th>status ที่พบในไฟล์</th><th class="num">จำนวนแถว</th><th>ระดับ</th></tr></thead><tbody>'+stRows+'</tbody></table></div>'+
     list(noStatus,['COMPONENT CODE','DESCRIPTION','ที่มา'],function(x){return '<tr><td>'+esc(x.comp)+'</td><td>'+esc(x.desc)+'</td><td class="small muted">'+esc(x.src)+'</td></tr>'},
       'component ที่อยู่ใน Master แต่ status ว่าง','ไม่รู้ว่าจะจัดระดับไหน (แค่เตือน/ห้ามเด็ดขาด) ควรเคลียร์ก่อนเสมอ','t-bad','noStatus');
