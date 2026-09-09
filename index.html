@@ -130,7 +130,7 @@ code{background:#eef2f6;padding:1px 5px;border-radius:4px;font-family:var(--f-mo
 <div class="uploadrow">
   <div class="uploadbox">
     <h3>1) ไฟล์ Master (Discon watch list)</h3>
-    <div class="muted small" style="margin-bottom:8px">รายชื่อ component ที่มีปัญหาแล้ว (To be discontinued / Old design) — ใช้เป็นฐานเทียบเสมอ</div>
+    <div class="muted small" style="margin-bottom:8px">รายชื่อ component ที่มีปัญหาแล้ว (To be = แค่เตือน / Old design = ระวัง) — ใช้เป็นฐานเทียบเสมอ</div>
     <div class="zone" id="zoneMaster">ลากไฟล์มาวาง หรือคลิกเลือก<br><span class="muted small">.xlsx .xlsm .csv</span></div>
     <input type="file" id="finMaster" accept=".xlsx,.xlsm,.xls,.csv,.txt" style="display:none">
     <div class="dirrow noprint" id="dirRowMaster"></div>
@@ -206,7 +206,7 @@ code{background:#eef2f6;padding:1px 5px;border-radius:4px;font-family:var(--f-mo
 </div>
 
 <footer class="app-footer">
-  Component Checker — ค้นหาและตรวจสอบสถานะ · Version 1.0.5 · Updated 2026-09-09 17:30 (UTC+07:00)
+  Component Checker — ค้นหาและตรวจสอบสถานะ · Version 1.0.6 · Updated 2026-09-09 17:41 (UTC+07:00)
 </footer>
 
 <dialog id="dlg"><div id="dlgc"></div><div style="margin-top:14px;text-align:right"><button class="btn sm" onclick="document.getElementById('dlg').close()">ปิด</button></div></dialog>
@@ -332,7 +332,7 @@ function worst(a,b){var o={ok:0,warn:1,bad:2};return o[b]>o[a]?b:a}
 
 /* ================= state ================= */
 var DB=null, RAW=[], SEEN={}, LASTRES=null, CHECK={};
-var STATUS_RULES_KEY='component_checker_status_rules_v1';
+var STATUS_RULES_KEY='component_checker_status_rules_v2';
 function loadStatusRules(){
   try{
     var saved=JSON.parse(window.localStorage.getItem(STATUS_RULES_KEY)||'{}');
@@ -351,11 +351,17 @@ function ensureStatusRules(){
   if(!DB)return;
   DB.statusN.forEach(function(g,S){if(CFG.lvl[S]==null)CFG.lvl[S]=guessLevel(S)});
 }
+function statusRuleName(status,level){
+  if(level==='bad')return 'ห้ามเด็ดขาด';
+  if(/DISCONTINU|เลิกใช้|ยกเลิก|OBSOLETE|CANCEL/.test(status))return 'แค่เตือน';
+  if(/OLD ?DESIGN|เก่า/.test(status))return 'ระวัง';
+  return 'แค่เตือน';
+}
 /* กฎสำหรับ status ที่ "พบ" ใน Discon Master เท่านั้น (การไม่พบในไฟล์นี้เลยถือเป็น 'ok' เสมอ โดยไม่ผ่านฟังก์ชันนี้)
-   ยืนยันจาก Biin แล้วว่า: To be discontinued = ห้ามเด็ดขาด (แดง), Old design = แค่เตือน (เหลือง) */
+   ค่าเริ่มต้น: To be discontinued = แค่เตือน, Old design = ระวัง */
 function guessLevel(S){
   if(S==='')return 'bad';                                    /* อยู่ใน watch list แต่ status ว่าง — ไม่รู้ความรุนแรง ต้องระวังสุด */
-  if(/DISCONTINU|เลิกใช้|ยกเลิก|OBSOLETE|CANCEL/.test(S))return 'bad';
+  if(/DISCONTINU|เลิกใช้|ยกเลิก|OBSOLETE|CANCEL/.test(S))return 'warn';
   if(/OLD ?DESIGN|เก่า/.test(S))return 'warn';
   return 'warn';                                              /* status อื่นที่ไม่รู้จัก แต่ยังอยู่ใน watch list — ระวังไว้ก่อน */
 }
@@ -909,7 +915,7 @@ function rowLevel(r){
     if(nk(r.status)===''){lv='bad';notes.push('พบใน watch list แต่ status ว่าง — ไม่รู้ความรุนแรง');}
     else{
       lv=lvlOf(r.status);
-      notes.push(lv==='bad'?('status: "'+r.status+'" — ห้ามเด็ดขาด'):('status: "'+r.status+'" — แค่เตือน ยังพอสั่งได้'));
+      notes.push(lv==='bad'?('status: "'+r.status+'" — ห้ามเด็ดขาด'):('status: "'+r.status+'" — '+statusRuleName(r.status,lv)));
     }
     if(r.statusConflict){lv=worst(lv,'warn');notes.push('status ไม่ตรงกันระหว่างหลายแถวในไฟล์ Master');}
     if(DB.mode==='compare'&&r.inFc&&lv!=='ok'){
@@ -1159,7 +1165,7 @@ function renderCheck(){
     var vs=Object.keys(g.variants);
     if(vs.length>1)spell.push({s:S,vs:vs.map(function(v){return v+' ('+g.variants[v]+')'}).join('  ·  ')});
   });
-  /* ★ รายการหลักที่ผู้ใช้ขอ — แยก 2 ระดับตามที่ยืนยัน: ห้ามเด็ดขาด (แดง) กับ แค่เตือน (เหลือง) */
+  /* ★ รายการหลักที่ผู้ใช้ขอ — แยก 2 ระดับตามที่ตั้งค่า: ห้ามเด็ดขาด (แดง) กับ ระดับเตือน (เหลือง) */
   if(compareMode){
     DB.joined.forEach(function(r){
       var L=rowLevel(r);
@@ -1173,7 +1179,7 @@ function renderCheck(){
     var S=p[0],g=p[1],js=jq(S);
     var opts=['warn','bad'].map(function(l){
       return '<label style="margin-right:12px"><input type="radio" name="lv_'+strip(S)+'" '+(CFG.lvl[S]===l?'checked':'')+
-        ' onchange="setStatusLevel('+js+',\''+l+'\');renderAll();if(MT.codes.length)runSearch()"> <span class="tag '+LVLTAG[l]+'">'+LVLNAME[l]+'</span></label>';
+        ' onchange="setStatusLevel('+js+',\''+l+'\');renderAll();if(MT.codes.length)runSearch()"> <span class="tag '+LVLTAG[l]+'">'+statusRuleName(S,l)+'</span></label>';
     }).join('');
     var vs=Object.keys(g.variants);
     return '<tr><td>'+esc(S===''?'(ว่าง)':S)+(vs.length>1?'<br><span class="muted small">รวมการสะกด '+vs.length+' แบบ: '+esc(vs.join(' / '))+'</span>':'')+
@@ -1203,7 +1209,7 @@ function renderCheck(){
   var h='';
   if(compareMode){
     h+=wrongBox('bad','⚠ PR ที่ห้ามเด็ดขาด — status ใน Master คือ "ห้ามเด็ดขาด" แต่ยังมี PR สั่งซื้ออยู่',wrongBad,'wrongBad','wrongpr')+
-       wrongBox('warn','⚠ PR ที่ควรตรวจสอบ — status ใน Master อยู่ระดับ "แค่เตือน" แต่ยังมี PR สั่งซื้ออยู่',wrongWarn,'wrongWarn','wrongpr');
+       wrongBox('warn','⚠ PR ที่ควรตรวจสอบ — status ใน Master อยู่ระดับเตือน (แค่เตือน/ระวัง) แต่ยังมี PR สั่งซื้ออยู่',wrongWarn,'wrongWarn','wrongpr');
   } else {
     h+='<div class="card"><h2>โหมดปัจจุบัน: ค้นหาจาก Master อย่างเดียว</h2>'+
       '<div class="muted small">ยังไม่ได้อัปโหลดไฟล์ PR — เครื่องมือแสดงแค่ status จาก Master ให้ค้นหาเท่านั้น เพิ่มไฟล์ PR เข้ามาเมื่อไหร่ ระบบจะเทียบให้อัตโนมัติว่ามีการเปิด PR ผิดหรือไม่</div></div>';
@@ -1214,12 +1220,12 @@ function renderCheck(){
       kpi('Master status ว่าง',noStatus.length,noStatus.length?'bad':'ok')+
     '</div></div>'+
     '<div class="card"><h2>ตั้งกฎ: status แต่ละค่าอยู่ระดับไหน <button class="q" onclick="info(\'status\')">?</button></h2>'+
-      '<div class="muted small" style="margin-bottom:8px">ค่าที่เลือกไว้ให้เป็นแค่การเดาจากคำ — <b>กรุณายืนยันเอง</b> เพราะไฟเขียว/เหลือง/แดงทั้งเครื่องมือ (รวมทั้งกล่อง "PR ที่เปิดผิด" ด้านบน) อิงตามตารางนี้ ทุกค่าที่อยู่ใน watch list ถือว่าไม่ ok อยู่แล้วโดยธรรมชาติ เลือกได้แค่ "แค่เตือน" หรือ "ห้ามเด็ดขาด"<br>'+
+      '<div class="muted small" style="margin-bottom:8px">ค่าที่เลือกไว้ให้เป็นแค่การเดาจากคำ — <b>กรุณายืนยันเอง</b> เพราะไฟเขียว/เหลือง/แดงทั้งเครื่องมือ (รวมทั้งกล่อง "PR ที่เปิดผิด" ด้านบน) อิงตามตารางนี้ ทุกค่าที่อยู่ใน watch list ถือว่าไม่ ok อยู่แล้วโดยธรรมชาติ โดยค่าเริ่มต้นคือ <code>To be</code> = "แค่เตือน" และ <code>Old design</code> = "ระวัง" ส่วน status อื่นเลือกได้ตามจริง<br>'+
       'การสะกดต่างกัน เช่น <code>Old design</code> กับ <code>OLD DESIGN</code> ระบบรวมเป็นค่าเดียวกันให้แล้ว จะได้ไม่ต้องตั้งกฎซ้ำ<br>'+
       '<span class="tag t-ok">บันทึกค่าที่เลือกไว้ใน Local Storage ของเครื่องนี้</span> เมื่อเปิดไฟล์หรืออัปโหลดข้อมูลใหม่ ค่าที่เคยตั้งจะถูกนำกลับมาใช้</div>'+
       '<table style="width:auto"><thead><tr><th>status ที่พบในไฟล์</th><th class="num">จำนวนแถว</th><th>ระดับ</th></tr></thead><tbody>'+stRows+'</tbody></table></div>'+
     list(noStatus,['COMPONENT CODE','DESCRIPTION','ที่มา'],function(x){return '<tr><td>'+esc(x.comp)+'</td><td>'+esc(x.desc)+'</td><td class="small muted">'+esc(x.src)+'</td></tr>'},
-      'component ที่อยู่ใน Master แต่ status ว่าง','ไม่รู้ว่าจะจัดระดับไหน (แค่เตือน/ห้ามเด็ดขาด) ควรเคลียร์ก่อนเสมอ','t-bad','noStatus');
+      'component ที่อยู่ใน Master แต่ status ว่าง','ไม่รู้ว่าจะจัดระดับไหน (แค่เตือน/ระวัง/ห้ามเด็ดขาด) ควรเคลียร์ก่อนเสมอ','t-bad','noStatus');
   if(compareMode&&dup.length)h+=list(dup,['COMPONENT CODE','จำนวนแถว','status ที่พบ'],function(d){return '<tr><td>'+esc(d.c)+'</td><td class="num">'+d.n+'</td><td>'+esc(d.st)+'</td></tr>'},
       'component ที่มีมากกว่า 1 แถวในไฟล์ Forecast pivot (ผิดปกติ)','ยอดถูกบวกรวมกันก่อนนำไปใช้ ถ้า status ไม่ตรงกันต้องเคลียร์ก่อน — ไม่รวมไฟล์ PR แบบรายการ เพราะหลายใบเป็นเรื่องปกติ','t-warn','dup');
   h+=list(spell,['status หลังรวม','การสะกดที่พบจริงในไฟล์'],function(d){return '<tr><td>'+esc(d.s)+'</td><td>'+esc(d.vs)+'</td></tr>'},
@@ -1325,12 +1331,12 @@ function renderMethod(){
   '<table><thead><tr><th>เงื่อนไข</th><th>ผลลัพธ์</th><th>ทำไม</th></tr></thead><tbody>'+
     '<tr><td>ไม่พบใน Master (watch list) เลย</td><td><span class="tag t-ok">✓ ปกติ</span></td><td>ไม่ได้อยู่ในบัญชีของมีปัญหา — เป็นค่าเริ่มต้นของ component ส่วนใหญ่</td></tr>'+
     '<tr><td>พบใน Master แต่ status ว่าง</td><td><span class="tag t-bad">✕ ห้ามเด็ดขาด</span></td><td>ไม่รู้ความรุนแรง ข้อมูลไม่สมบูรณ์</td></tr>'+
-    '<tr><td>พบใน Master, status = To be discontinued</td><td><span class="tag t-bad">✕ ห้ามเด็ดขาด</span></td><td>ตามที่ยืนยัน — เลิกใช้แล้ว</td></tr>'+
-    '<tr><td>พบใน Master, status = Old design</td><td><span class="tag t-warn">! แค่เตือน</span></td><td>ตามที่ยืนยัน — ยังพอสั่งได้ แต่ควรระวัง</td></tr>'+
-    '<tr><td>ระดับข้างบน (! หรือ ✕) <b>+ มีรายการ PR ในโหมด ②</b></td><td>ป้ายพิเศษ "⚠ เปิดผิด?"</td><td><b>นี่คือ highlight หลักที่ขอ</b> — ของอยู่ใน watch list แล้วแต่ยังมีคนสั่งซื้อ แยกกล่องแดง (ห้ามเด็ดขาด) กับกล่องเหลือง (แค่เตือน) ในแท็บตรวจข้อมูล</td></tr>'+
+    '<tr><td>พบใน Master, status = To be discontinued</td><td><span class="tag t-warn">! แค่เตือน</span></td><td>ตามที่ตั้งค่าเริ่มต้น — ให้ตรวจสอบก่อนดำเนินการ</td></tr>'+
+    '<tr><td>พบใน Master, status = Old design</td><td><span class="tag t-warn">! ระวัง</span></td><td>ตามที่ตั้งค่าเริ่มต้น — ยังพอสั่งได้ แต่ควรระวัง</td></tr>'+
+    '<tr><td>ระดับเตือน (! ) หรือห้ามเด็ดขาด (✕) <b>+ มีรายการ PR ในโหมด ②</b></td><td>ป้ายพิเศษ "⚠ เปิดผิด?"</td><td><b>นี่คือ highlight หลักที่ขอ</b> — ของอยู่ใน watch list แล้วแต่ยังมีคนสั่งซื้อ แยกกล่องแดง (ห้ามเด็ดขาด) กับกล่องเหลือง (แค่เตือน/ระวัง) ในแท็บตรวจข้อมูล</td></tr>'+
     '<tr><td>status ไม่ตรงกันระหว่างหลายแถวใน Master</td><td>ยกระดับเป็นอย่างน้อย <span class="tag t-warn">!</span></td><td>ข้อมูลต้นทางขัดแย้งกันเอง ควรเคลียร์</td></tr>'+
   '</tbody></table>'+
-  '<div class="small muted">กฎ "To be discontinued → ห้ามเด็ดขาด" และ "Old design → แค่เตือน" ตั้งเป็นค่าเริ่มต้นตามที่ยืนยันแล้ว แต่ปรับเปลี่ยนได้เองที่แท็บตรวจข้อมูล ถ้า Master มี status ค่าอื่นที่ไม่รู้จัก ระบบจะตั้งเป็น "แค่เตือน" ไว้ก่อน (ไม่มีทางเป็น "ปกติ" เพราะการอยู่ใน watch list แปลว่ามีเหตุผลบางอย่างเสมอ)</div>'+
+  '<div class="small muted">ค่าเริ่มต้นคือ "To be discontinued → แค่เตือน" และ "Old design → ระวัง" โดยทั้งสองค่าอยู่ในระดับเตือนเดียวกัน แต่แสดงชื่อให้ตรงกับ status คุณสามารถปรับเปลี่ยนได้เองที่แท็บตรวจข้อมูล ส่วน status อื่นที่ไม่รู้จัก ระบบจะตั้งเป็น "แค่เตือน" ไว้ก่อน (ไม่มีทางเป็น "ปกติ" เพราะการอยู่ใน watch list แปลว่ามีเหตุผลบางอย่างเสมอ)</div>'+
 
   '<h3>7. สิ่งที่เครื่องมือนี้ไม่รู้และไม่ควรถูกใช้ตอบ</h3>'+
   '<ul class="small">'+
@@ -1351,7 +1357,7 @@ function expMaster(){
   var head=['ตรวจ','เหตุผล','COMPONENT','STATUS (Master)'].concat(mtCols().map(function(c){return c[0]}));
   var rows=MT.view.map(function(r){
     var L=rowLevel(r);
-    var base=[LVLNAME[L.lv],L.notes.join(' · '),r.comp,r.status];
+    var base=[r.found?statusRuleName(r.status,L.lv):LVLNAME[L.lv],L.notes.join(' · '),r.comp,r.status];
     return base.concat(mtCols().map(function(c){var v=r[c[1]];return v==null?'':v}));
   });
   dl(csv([head].concat(rows)),DB.mode==='compare'?'pr_vs_master.csv':'master_table.csv');
@@ -1378,10 +1384,10 @@ function show(id){
 }
 var INFO={
   search:'<h4>พิมพ์ยังไง</h4>พิมพ์แค่บางส่วนก็ได้ ระบบจะขึ้นรายการให้เลือก กดลูกศรขึ้น/ลงแล้ว Enter หรือคลิกเอา<br><br><b>Copy จาก Excel ได้เลย</b> — เลือกทั้งคอลัมน์ code ใน Excel แล้ว Ctrl+C มาวางในช่องนี้ ระบบรับหลายแถวพร้อมกัน ถ้าเผลอเลือกมาหลายคอลัมน์ (มี Tab คั่น) ระบบจะเอาแค่คอลัมน์แรกของแต่ละแถวให้อัตโนมัติ<br><br><h4>ผลลัพธ์ไปไหน</h4>ค้นแล้วไม่มีการ์ดแยกต่อ code — ทุกอย่างไปกรองตารางเดียวที่ด้านล่างให้เลย เพื่อให้ดูหลายรายการพร้อมกันได้ง่าย<br><br><h4>ข้อมูลมาจากไหน</h4>TU Code, Customer, status มาจากไฟล์ Master เสมอ ไม่ว่าจะมีไฟล์ PR หรือไม่',
-  master:'<h4>ตารางนี้คืออะไร</h4>ถ้าอัปโหลดแค่ไฟล์ Master — ตารางแสดงรายชื่อทุก component ใน watch list พร้อม status<br><br>ถ้าเพิ่มไฟล์ PR เข้ามา — ตารางจะยึด PR เป็นหลัก แสดง<b>ทุกรายการ PR แบบไม่ยุบรวม</b> (1 แถว = 1 ใบขอซื้อ 1 component) พร้อม status ล่าสุดจาก Master แปะไว้ทุกแถว — component ใน Master ที่ไม่มี PR จะไม่โผล่ในตารางนี้<br><br><b>คอลัมน์ตรึงซ้าย</b> (ตรวจ/COMPONENT/STATUS) จะอยู่กับที่เวลาเลื่อนดูคอลัมน์อื่นทางขวา — ตารางมีครบทุกคอลัมน์จากทั้งสองไฟล์<br><br><b>กด KPI ปกติ/แค่เตือน/ห้ามเด็ดขาด ด้านบนได้</b> เพื่อกรองตารางเฉพาะระดับนั้น',
-  check:'<h4>หน้านี้คืออะไร</h4>รายการตรวจก่อนดำเนินการ ทั้งหมดมาจากการเทียบข้อมูลตรงๆ ไม่มีการเดา<br><br>ถ้ามีไฟล์ PR ด้วย สำคัญที่สุดคือ 2 กล่องด้านบน — กล่องแดง "ห้ามเด็ดขาด" กับกล่องเหลือง "แค่เตือน" เช็คก่อนเรื่องอื่นเสมอ',
-  wrongpr:'<h4>เกณฑ์ที่ใช้ตัด</h4>เอา status ล่าสุดของ component นั้นจาก Master มาเทียบกับกฎที่ตั้งไว้ในตาราง "ตั้งกฎ" ด้านล่าง — ถ้าพบใน watch list (ไม่ว่าจะระดับห้ามเด็ดขาดหรือแค่เตือน) และ component นั้นยังมีรายการอยู่ในไฟล์ PR อย่างน้อย 1 แถว จะถูกดึงมาขึ้นในกล่องที่ตรงระดับ<br><br><h4>ทำไมต้องสนใจ</h4>ของที่อยู่ใน watch list แล้วไม่ควรมีการเปิดใบขอซื้อใหม่อีก ถ้ายังมี PR อยู่ แปลว่าอาจมีคนเปิดผิด หรือ Master ยังไม่อัปเดตให้ทันเวลา<br><br><h4>ข้อควรระวัง</h4>ผลตรงนี้ไวต่อกฎที่ตั้งในตาราง "ตั้งกฎ" มาก — ถ้ายังไม่ได้ยืนยันกฎ (โดยเฉพาะ status ที่ไม่รู้จัก) ผลอาจไม่แม่นยำ',
-  status:'<h4>ทำไมต้องตั้งเอง</h4>ระบบเห็นแค่ค่า status ที่มีอยู่ในไฟล์ ค่าที่เดาไว้ให้ (To be discontinued → ห้ามเด็ดขาด, Old design → แค่เตือน) อาจไม่ตรงกับกฎจริงทั้งหมด ต้องยืนยันเอง เพราะมีผลต่อทั้งเครื่องมือ รวมถึง 2 กล่อง highlight ด้านบน<br><br>สังเกตว่าเลือกได้แค่ "แค่เตือน" หรือ "ห้ามเด็ดขาด" — ไม่มีตัวเลือก "ปกติ" เพราะการมีชื่ออยู่ใน watch list แปลว่ามีเหตุผลบางอย่างเสมอ ไม่เคยถือเป็นเรื่องปกติ',
+  master:'<h4>ตารางนี้คืออะไร</h4>ถ้าอัปโหลดแค่ไฟล์ Master — ตารางแสดงรายชื่อทุก component ใน watch list พร้อม status<br><br>ถ้าเพิ่มไฟล์ PR เข้ามา — ตารางจะยึด PR เป็นหลัก แสดง<b>ทุกรายการ PR แบบไม่ยุบรวม</b> (1 แถว = 1 ใบขอซื้อ 1 component) พร้อม status ล่าสุดจาก Master แปะไว้ทุกแถว — component ใน Master ที่ไม่มี PR จะไม่โผล่ในตารางนี้<br><br><b>คอลัมน์ตรึงซ้าย</b> (ตรวจ/COMPONENT/STATUS) จะอยู่กับที่เวลาเลื่อนดูคอลัมน์อื่นทางขวา — ตารางมีครบทุกคอลัมน์จากทั้งสองไฟล์<br><br><b>กด KPI ปกติ/ระดับเตือน/ห้ามเด็ดขาด ด้านบนได้</b> เพื่อกรองตารางเฉพาะระดับนั้น',
+  check:'<h4>หน้านี้คืออะไร</h4>รายการตรวจก่อนดำเนินการ ทั้งหมดมาจากการเทียบข้อมูลตรงๆ ไม่มีการเดา<br><br>ถ้ามีไฟล์ PR ด้วย สำคัญที่สุดคือ 2 กล่องด้านบน — กล่องแดง "ห้ามเด็ดขาด" กับกล่องเหลือง "แค่เตือน/ระวัง" เช็คก่อนเรื่องอื่นเสมอ',
+  wrongpr:'<h4>เกณฑ์ที่ใช้ตัด</h4>เอา status ล่าสุดของ component นั้นจาก Master มาเทียบกับกฎที่ตั้งไว้ในตาราง "ตั้งกฎ" ด้านล่าง — ถ้าพบใน watch list (ไม่ว่าจะระดับห้ามเด็ดขาดหรือระดับเตือน) และ component นั้นยังมีรายการอยู่ในไฟล์ PR อย่างน้อย 1 แถว จะถูกดึงมาขึ้นในกล่องที่ตรงระดับ<br><br><h4>ทำไมต้องสนใจ</h4>ของที่อยู่ใน watch list แล้วไม่ควรมีการเปิดใบขอซื้อใหม่อีก ถ้ายังมี PR อยู่ แปลว่าอาจมีคนเปิดผิด หรือ Master ยังไม่อัปเดตให้ทันเวลา<br><br><h4>ข้อควรระวัง</h4>ผลตรงนี้ไวต่อกฎที่ตั้งในตาราง "ตั้งกฎ" มาก — ถ้ายังไม่ได้ยืนยันกฎ (โดยเฉพาะ status ที่ไม่รู้จัก) ผลอาจไม่แม่นยำ',
+  status:'<h4>ทำไมต้องตั้งเอง</h4>ระบบเห็นแค่ค่า status ที่มีอยู่ในไฟล์ ค่าเริ่มต้นคือ To be discontinued → แค่เตือน และ Old design → ระวัง แต่ทั้งสองค่าอยู่ในระดับเตือนเดียวกันและสามารถปรับเปลี่ยนได้เอง เพราะมีผลต่อทั้งเครื่องมือ รวมถึง 2 กล่อง highlight ด้านบน<br><br>สังเกตว่าเลือกได้ระดับเตือนหรือ "ห้ามเด็ดขาด" — ไม่มีตัวเลือก "ปกติ" เพราะการมีชื่ออยู่ใน watch list แปลว่ามีเหตุผลบางอย่างเสมอ',
   import:'<h4>หน้านี้มีไว้ทำอะไร</h4>ตอบว่า "ระบบเห็นข้อมูลแค่ไหน" และให้แก้เองได้ถ้าจับผิดคอลัมน์หรือผิดประเภทไฟล์ — เลือกใหม่จาก dropdown แล้วคำนวณใหม่ทั้งหมดทันที'
 };
 function info(k){$('dlgc').innerHTML=INFO[k]||'';$('dlg').showModal()}
