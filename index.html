@@ -1,10 +1,41 @@
 <!DOCTYPE html>
+<!--
+  Component Checker — ค้นหาและตรวจสอบสถานะ (Discon Master vs PR)
+  ไฟล์เดียว ไม่มี dependency นอกไฟล์ (SheetJS ฝังอยู่ในนี้) — แก้ไขบนมือถือ/aCode ได้
+
+  ▸▸ สารบัญ (หา string เหล่านี้เพื่อกระโดดไปจุดที่ต้องการ) ▸▸
+    [CSS]    1. DESIGN TOKENS      ตัวแปรสี/ฟอนต์
+    [CSS]    2. BASE & LAYOUT      reset, header, nav, .wrap
+    [CSS]    3. BUTTONS & INPUTS   .btn, textarea/input/select
+    [CSS]    4. TABLE & STICKY     table, .stkA/.stkB/.stkC (คอลัมน์ตรึงซ้าย)
+    [CSS]    5. CARDS & TAGS       .card, .kpi, .tag, .res
+    [CSS]    6. UPLOAD & FOLDER    .uploadbox, .zone, .dirlinked (เชื่อมโฟลเดอร์)
+    [CSS]    7. AUTOCOMPLETE       .ac (dropdown ตอนพิมพ์ค้นหา)
+    [CSS]    8. DIALOG & PRINT     <dialog>, @media print
+    [HTML]   9. HEADER/NAV/UPLOAD  โครงหน้าเว็บ + 2 ช่องอัปโหลด
+    [HTML]  10. TABS               search/check/import/method/about
+    [JS]    11. helpers            esc/nk/fmt/parseMonth ฯลฯ
+    [JS]    12. state              DB, CFG, LVLNAME (ชื่อระดับ ok/warn/bad)
+    [JS]    13. reading            อ่านไฟล์ → หา header row → แยกชีท bom/tx/forecast
+    [JS]    14. ingest             ยัดข้อมูลดิบเข้า db.bom/db.fc/db.tx/db.tuOnly
+    [JS]    15. derived views      join Master+PR, status ต่อ component, pool สำรองไว้ค้นหา
+    [JS]    16. files              จัดการไฟล์ที่อัปโหลด 2 ช่อง (Master/PR) + rebuild
+    [JS]    17. folder-link        เชื่อมโฟลเดอร์ Sync (File System Access API + IndexedDB)
+    [JS]    18. ตารางรวม            mtHead/mtRow/renderMaster (ตารางหลักที่เห็นบนจอ)
+    [JS]    19. autocomplete       dropdown เวลาพิมพ์ในช่องค้นหา
+    [JS]    20. search             extractCodes + runSearch (ค้นแล้วไปกรองตารางรวม)
+    [JS]    21. check tab          กล่อง highlight แดง/เหลือง + รายการที่ต้องตรวจ
+    [JS]    22. import tab         ตารางแก้การจับคอลัมน์เอง (dropdown remap)
+    [JS]    23. method tab         อธิบายหลักการคิดทั้งหมดแบบยาว (สำหรับผู้ใช้อ่าน)
+    [JS]    24. export/ui/init     CSV export, show(), INFO popup, ผูก event ท้ายไฟล์
+-->
 <html lang="th">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Component Checker — ค้นหาและตรวจสอบสถานะ</title>
 <style>
+/* ===== 1. DESIGN TOKENS — สีและฟอนต์ทั้งหมด แก้ที่นี่จุดเดียวมีผลทั้งไฟล์ ===== */
 :root{
   --f-body:"IBM Plex Sans Thai","Leelawadee UI",Leelawadee,"Noto Sans Thai",Tahoma,system-ui,-apple-system,sans-serif;
   --f-mono:"Cascadia Mono",Consolas,"Courier New",monospace;
@@ -12,6 +43,7 @@
   --brand:#123b63; --brand2:#e8f1f8;
   --ok:#127a4a; --okbg:#e6f5ee; --warn:#8a5a00; --warnbg:#fff3d9; --bad:#a51f2b; --badbg:#fdeaec;
 }
+/* ===== 2. BASE & LAYOUT — reset, header, nav, container ===== */
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5}
 header{background:var(--brand);color:#fff;padding:14px 18px}
@@ -21,11 +53,11 @@ header p{margin:3px 0 0;font-size:12px;opacity:.85}
 nav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
 nav button{background:#fff;border:1px solid var(--line);padding:8px 14px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px;color:var(--ink)}
 nav button.on{background:var(--brand);color:#fff;border-color:var(--brand)}
-.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
-.card h2{margin:0 0 10px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.card h3{margin:15px 0 6px;font-size:13px;font-weight:600}
-.upload{border:2px dashed #b9c4d0;border-radius:10px;padding:20px;text-align:center;background:#fbfcfd;cursor:pointer}
-.upload.hover{border-color:var(--brand);background:var(--brand2)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.muted{color:var(--mut)} .small{font-size:12px}
+.hl{background:#fff2a8}
+
+/* ===== 3. BUTTONS & INPUTS ===== */
 .btn{background:var(--brand);color:#fff;border:0;padding:9px 16px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px}
 .btn.sec{background:#fff;color:var(--brand);border:1px solid var(--brand)}
 .btn:disabled{background:#c3cbd4;cursor:not-allowed}
@@ -33,6 +65,8 @@ nav button.on{background:var(--brand);color:#fff;border-color:var(--brand)}
 textarea,input,select{font-family:inherit;font-size:13px;border:1px solid var(--line);border-radius:8px;padding:8px;color:var(--ink);background:#fff}
 input[type=number]{width:76px}
 textarea{width:100%;min-height:64px;resize:vertical;font-family:var(--f-mono)}
+
+/* ===== 4. TABLE & STICKY COLUMNS — ตารางหลัก + คอลัมน์ตรวจ/COMPONENT/STATUS ตรึงซ้าย ===== */
 table{border-collapse:collapse;width:100%;font-size:12.5px}
 th,td{border:1px solid var(--line);padding:5px 8px;text-align:left;white-space:nowrap;vertical-align:top}
 th{background:#eef2f6;font-weight:600;position:sticky;top:0;z-index:2}
@@ -49,9 +83,16 @@ tbody tr:hover td{background:var(--brand2)}
 th.stkA,th.stkB,th.stkC{z-index:5}
 tbody tr:nth-child(even) .stkA,tbody tr:nth-child(even) .stkB,tbody tr:nth-child(even) .stkC{background:#fafbfc}
 tbody tr:hover .stkA,tbody tr:hover .stkB,tbody tr:hover .stkC{background:var(--brand2)}
+
+/* ===== 5. CARDS, KPI, TAGS, RESULT BOXES ===== */
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
+.card h2{margin:0 0 10px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.card h3{margin:15px 0 6px;font-size:13px;font-weight:600}
 .kpi.clickable{cursor:pointer;user-select:none;transition:box-shadow .12s}
 .kpi.clickable:hover{box-shadow:0 0 0 2px var(--brand2)}
 .kpi.active{box-shadow:0 0 0 2px var(--brand);background:var(--brand2)}
+
+/* ===== 6. UPLOAD ZONES & FOLDER-LINK UI (เชื่อมโฟลเดอร์ Sync) ===== */
 .uploadrow{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px}
 .uploadbox{flex:1;min-width:260px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
 .uploadbox h3{margin:0 0 4px;font-size:13.5px}
@@ -67,10 +108,11 @@ tbody tr:hover .stkA,tbody tr:hover .stkB,tbody tr:hover .stkC{background:var(--
 .dirneedsconfirm{border:1px solid #e8cf95;background:var(--warnbg);border-radius:8px;padding:8px 10px;font-size:12px}
 .dirbtnrow{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
 .xbtn{background:#fff;border:1px solid var(--line);border-radius:6px;padding:3px 9px;cursor:pointer;font-size:12px;color:var(--bad)}
+
+/* ===== 7. TAGS, KPI GRID, RESULT BOXES, MISC WIDGETS ===== */
 .tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:600;white-space:nowrap}
 .t-ok{background:var(--okbg);color:var(--ok)} .t-warn{background:var(--warnbg);color:var(--warn)}
 .t-bad{background:var(--badbg);color:var(--bad)} .t-mut{background:#eceff3;color:var(--mut)}
-.muted{color:var(--mut)} .small{font-size:12px}
 .kpis{display:flex;gap:10px;flex-wrap:wrap}
 .kpi{flex:1;min-width:120px;background:#fff;border:1px solid var(--line);border-radius:9px;padding:10px 12px}
 .kpi b{display:block;font-size:21px;line-height:1.2}
@@ -78,19 +120,19 @@ tbody tr:hover .stkA,tbody tr:hover .stkB,tbody tr:hover .stkC{background:var(--
 .res.ok{border-left-color:var(--ok)} .res.warn{border-left-color:#d69200} .res.bad{border-left-color:var(--bad)}
 .res h3{margin:0 0 4px;font-size:15px;font-family:var(--f-mono)}
 ul.notes{margin:8px 0 10px;padding-left:18px} ul.notes li{margin:2px 0}
-.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-.hl{background:#fff2a8}
 .q{border:1px solid var(--line);background:#fff;border-radius:50%;width:19px;height:19px;font-size:12px;cursor:pointer;color:var(--mut);padding:0;flex:none}
 .pill{border:1px solid var(--line);border-radius:999px;padding:3px 11px;font-size:12px;background:#fff;cursor:pointer;user-select:none}
 .pill.on{background:var(--brand);color:#fff;border-color:var(--brand)}
-dialog{border:1px solid var(--line);border-radius:10px;max-width:680px;padding:20px;font-family:inherit;color:var(--ink)}
-dialog::backdrop{background:#0007}
-#dlgc h4{margin:14px 0 4px;font-size:13.5px}
-#dlgc table{margin:6px 0;font-size:12px}
-#dlgc td,#dlgc th{white-space:normal}
 code{background:#eef2f6;padding:1px 5px;border-radius:4px;font-family:var(--f-mono);font-size:12px}
 .prog{height:6px;background:#e7ecf1;border-radius:4px;overflow:hidden;margin-top:8px}
 .prog>i{display:block;height:100%;background:var(--brand);width:0;transition:width .2s}
+.warnbox{background:var(--warnbg);border:1px solid #e8cf95;border-radius:9px;padding:11px 13px;margin-bottom:12px}
+.warnbox b{color:var(--warn)}
+.okbox{background:var(--okbg);border:1px solid #9bcdb2;border-radius:9px;padding:11px 13px;margin-bottom:12px}
+.okbox b{color:var(--ok)}
+.app-footer{text-align:center;color:var(--mut);font-size:12px;padding:4px 16px 18px}
+
+/* ===== 8. AUTOCOMPLETE DROPDOWN (ตอนพิมพ์ในช่องค้นหา) + DIALOG (popup ?) + PRINT ===== */
 .acwrap{position:relative}
 .ac{position:absolute;left:0;right:0;top:100%;z-index:50;background:#fff;border:1px solid var(--line);
     border-radius:8px;box-shadow:0 8px 22px #0002;max-height:290px;overflow:auto;display:none;margin-top:2px}
@@ -100,19 +142,20 @@ code{background:#eef2f6;padding:1px 5px;border-radius:4px;font-family:var(--f-mo
 .ac b{font-family:var(--f-mono);font-size:13px}
 .ac .ty{font-size:10.5px;padding:1px 6px;border-radius:4px;background:#eceff3;color:var(--mut);font-weight:600}
 .ac .ds{color:var(--mut);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
-.warnbox{background:var(--warnbg);border:1px solid #e8cf95;border-radius:9px;padding:11px 13px;margin-bottom:12px}
-.warnbox b{color:var(--warn)}
-.okbox{background:var(--okbg);border:1px solid #9bcdb2;border-radius:9px;padding:11px 13px;margin-bottom:12px}
-.okbox b{color:var(--ok)}
-.app-footer{text-align:center;color:var(--mut);font-size:12px;padding:4px 16px 18px}
+dialog{border:1px solid var(--line);border-radius:10px;max-width:680px;padding:20px;font-family:inherit;color:var(--ink)}
+dialog::backdrop{background:#0007}
+#dlgc h4{margin:14px 0 4px;font-size:13.5px}
+#dlgc table{margin:6px 0;font-size:12px}
+#dlgc td,#dlgc th{white-space:normal}
 @media print{
-  header,nav,.upload,.noprint{display:none!important}
+  header,nav,.noprint{display:none!important}
   .scroll{max-height:none;overflow:visible} .card{break-inside:avoid;border:1px solid #ccc}
   body{background:#fff}
 }
 </style>
 </head>
 <body>
+<!-- ===== 9. HEADER / NAV / อัปโหลด 2 ช่อง (Master + PR) ===== -->
 <header>
   <h1>Component Checker — ค้นหาและตรวจสอบสถานะ</h1>
   <p>ประมวลผลในเครื่องคุณทั้งหมด · ไม่มีการส่งข้อมูลออกนอกเครื่อง · ไม่ต้องติดตั้งอะไร</p>
@@ -148,6 +191,7 @@ code{background:#eef2f6;padding:1px 5px;border-radius:4px;font-family:var(--f-mo
 <div class="prog" id="prog" style="display:none"><i></i></div>
 <div id="fstat" class="small noprint" style="margin:-6px 0 14px"></div>
 
+<!-- ===== 10. TABS: search / check / import / method / about ===== -->
 <div id="search">
 
   <div class="card">
@@ -206,7 +250,7 @@ code{background:#eef2f6;padding:1px 5px;border-radius:4px;font-family:var(--f-mo
 </div>
 
 <footer class="app-footer">
-  Component Checker — ค้นหาและตรวจสอบสถานะ · Version 1.0.8 · Updated 2026-09-09 17:44 (UTC+07:00)
+  Component Checker — ค้นหาและตรวจสอบสถานะ · Version 1.0.9 · Updated 2026-09-10 11:10 (UTC+07:00)
 </footer>
 
 <dialog id="dlg"><div id="dlgc"></div><div style="margin-top:14px;text-align:right"><button class="btn sm" onclick="document.getElementById('dlg').close()">ปิด</button></div></dialog>
@@ -237,7 +281,7 @@ var o=((a=s[17])==null?void 0:a[0])?Ob(e,e[_b(s[17][0].data)][0]):[];var l=vb(s[
 var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.s.r;c<=n.e.r;++c){i=Ta(c);for(f=n.s.c;f<=n.e.c;++f){r=s[f]+i;t=l?(e[c]||[])[f]:e[r];a="";if(t===undefined)continue;else if(t.F!=null){r=t.F;if(!t.f)continue;a=t.f;if(r.indexOf(":")==-1)r=r+":"+r}if(t.f!=null)a=t.f;else if(t.t=="z")continue;else if(t.t=="n"&&t.v!=null)a=""+t.v;else if(t.t=="b")a=t.v?"TRUE":"FALSE";else if(t.w!==undefined)a="'"+t.w;else if(t.v===undefined)continue;else if(t.t=="s")a="'"+t.v;else a=""+t.v;o[o.length]=r+"="+a}}return o}function xw(e,r,t){var a=t||{};var n=+!a.skipHeader;var i=e||{};var s=0,f=0;if(i&&a.origin!=null){if(typeof a.origin=="number")s=a.origin;else{var o=typeof a.origin=="string"?Oa(a.origin):a.origin;s=o.r;f=o.c}}var l;var c={s:{c:0,r:0},e:{c:f,r:s+r.length-1+n}};if(i["!ref"]){var h=Da(i["!ref"]);c.e.c=Math.max(c.e.c,h.e.c);c.e.r=Math.max(c.e.r,h.e.r);if(s==-1){s=h.e.r+1;c.e.r=s+r.length-1+n}}else{if(s==-1){s=0;c.e.r=r.length-1+n}}var u=a.header||[],d=0;r.forEach(function(e,r){rr(e).forEach(function(t){if((d=u.indexOf(t))==-1)u[d=u.length]=t;var o=e[t];var c="z";var h="";var v=Ra({c:f+d,r:s+r+n});l=Rw(i,v);if(o&&typeof o==="object"&&!(o instanceof Date)){i[v]=o}else{if(typeof o=="number")c="n";else if(typeof o=="boolean")c="b";else if(typeof o=="string")c="s";else if(o instanceof Date){c="d";if(!a.cellDates){c="n";o=fr(o)}h=a.dateNF||X[14]}else if(o===null&&a.nullError){c="e";o=0}if(!l)i[v]=l={t:c,v:o};else{l.t=c;l.v=o;delete l.w;delete l.R;if(h)l.z=h}if(h)l.z=h}})});c.e.c=Math.max(c.e.c,f+u.length-1);var v=Ta(s);if(n)for(d=0;d<u.length;++d)i[ya(d+f)+v]={t:"s",v:u[d]};i["!ref"]=Na(c);return i}function Ow(e,r){return xw(null,e,r)}function Rw(e,r,t){if(typeof r=="string"){if(Array.isArray(e)){var a=Oa(r);if(!e[a.r])e[a.r]=[];return e[a.r][a.c]||(e[a.r][a.c]={t:"z"})}return e[r]||(e[r]={t:"z"})}if(typeof r!="number")return Rw(e,Ra(r));return Rw(e,Ra({r:r,c:t||0}))}function Iw(e,r){if(typeof r=="number"){if(r>=0&&e.SheetNames.length>r)return r;throw new Error("Cannot find sheet # "+r)}else if(typeof r=="string"){var t=e.SheetNames.indexOf(r);if(t>-1)return t;throw new Error("Cannot find sheet name |"+r+"|")}else throw new Error("Cannot find sheet |"+r+"|")}function Nw(){return{SheetNames:[],Sheets:{}}}function Dw(e,r,t,a){var n=1;if(!t)for(;n<=65535;++n,t=undefined)if(e.SheetNames.indexOf(t="Sheet"+n)==-1)break;if(!t||e.SheetNames.length>=65535)throw new Error("Too many worksheets");if(a&&e.SheetNames.indexOf(t)>=0){var i=t.match(/(^.*?)(\d+)$/);n=i&&+i[2]||0;var s=i&&i[1]||t;for(++n;n<=65535;++n)if(e.SheetNames.indexOf(t=s+n)==-1)break}Jp(t);if(e.SheetNames.indexOf(t)>=0)throw new Error("Worksheet with name |"+t+"| already exists!");e.SheetNames.push(t);e.Sheets[t]=r;return t}function Fw(e,r,t){if(!e.Workbook)e.Workbook={};if(!e.Workbook.Sheets)e.Workbook.Sheets=[];var a=Iw(e,r);if(!e.Workbook.Sheets[a])e.Workbook.Sheets[a]={};switch(t){case 0:;case 1:;case 2:break;default:throw new Error("Bad sheet visibility setting "+t);}e.Workbook.Sheets[a].Hidden=t}function Pw(e,r){e.z=r;return e}function Lw(e,r,t){if(!r){delete e.l}else{e.l={Target:r};if(t)e.l.Tooltip=t}return e}function Mw(e,r,t){return Lw(e,"#"+r,t)}function Uw(e,r,t){if(!e.c)e.c=[];e.c.push({t:r,a:t||"SheetJS"})}function Bw(e,r,t,a){var n=typeof r!="string"?r:Da(r);var i=typeof r=="string"?r:Na(r);for(var s=n.s.r;s<=n.e.r;++s)for(var f=n.s.c;f<=n.e.c;++f){var o=Rw(e,s,f);o.t="n";o.F=i;delete o.v;if(s==n.s.r&&f==n.s.c){o.f=t;if(a)o.D=true}}return e}var Ww={encode_col:ya,encode_row:Ta,encode_cell:Ra,encode_range:Na,decode_col:Ca,decode_row:ka,split_cell:xa,decode_cell:Oa,decode_range:Ia,format_cell:Pa,sheet_add_aoa:Ma,sheet_add_json:xw,sheet_add_dom:Gm,aoa_to_sheet:Ua,json_to_sheet:Ow,table_to_sheet:jm,table_to_book:Xm,sheet_to_csv:yw,sheet_to_txt:Sw,sheet_to_json:Aw,sheet_to_html:Vm,sheet_to_formulae:_w,sheet_to_row_object_array:Aw,sheet_get_cell:Rw,book_new:Nw,book_append_sheet:Dw,book_set_sheet_visibility:Fw,cell_set_number_format:Pw,cell_set_hyperlink:Lw,cell_set_internal_link:Mw,cell_add_comment:Uw,sheet_set_array_formula:Bw,consts:{SHEET_VISIBLE:0,SHEET_HIDDEN:1,SHEET_VERY_HIDDEN:2}};var Hw;function zw(e){Hw=e}function Vw(e,r){var t=Hw();var a=r==null?{}:r;if(e==null||e["!ref"]==null){t.push(null);return t}var n=Da(e["!ref"]);var i=a.FS!==undefined?a.FS:",",s=i.charCodeAt(0);var f=a.RS!==undefined?a.RS:"\n",o=f.charCodeAt(0);var l=new RegExp((i=="|"?"\\|":i)+"+$");var c="",h=[];a.dense=Array.isArray(e);var u=a.skipHidden&&e["!cols"]||[];var d=a.skipHidden&&e["!rows"]||[];for(var v=n.s.c;v<=n.e.c;++v)if(!(u[v]||{}).hidden)h[v]=ya(v);var p=n.s.r;var g=false,m=0;t._read=function(){if(!g){g=true;return t.push("\ufeff")}while(p<=n.e.r){++p;if((d[p-1]||{}).hidden)continue;c=Cw(e,n,p-1,h,s,o,i,a);if(c!=null){if(a.strip)c=c.replace(l,"");if(c||a.blankrows!==false)return t.push((m++?f:"")+c)}}return t.push(null)};return t}function Gw(e,r){var t=Hw();var a=r||{};var n=a.header!=null?a.header:Bm;var i=a.footer!=null?a.footer:Wm;t.push(n);var s=Ia(e["!ref"]);a.dense=Array.isArray(e);t.push(zm(e,s,a));var f=s.s.r;var o=false;t._read=function(){if(f>s.e.r){if(!o){o=true;t.push("</table>"+i)}return t.push(null)}while(f<=s.e.r){t.push(Um(e,s,f,a));++f;break}};return t}function jw(e,r){var t=Hw({objectMode:true});if(e==null||e["!ref"]==null){t.push(null);return t}var a={t:"n",v:0},n=0,i=1,s=[],f=0,o="";var l={s:{r:0,c:0},e:{r:0,c:0}};var c=r||{};var h=c.range!=null?c.range:e["!ref"];if(c.header===1)n=1;else if(c.header==="A")n=2;else if(Array.isArray(c.header))n=3;switch(typeof h){case"string":l=Da(h);break;case"number":l=Da(e["!ref"]);l.s.r=h;break;default:l=h;}if(n>0)i=0;var u=Ta(l.s.r);var d=[];var v=0;var p=Array.isArray(e);var g=l.s.r,m=0;var b={};if(p&&!e[g])e[g]=[];var w=c.skipHidden&&e["!cols"]||[];var k=c.skipHidden&&e["!rows"]||[];for(m=l.s.c;m<=l.e.c;++m){if((w[m]||{}).hidden)continue;d[m]=ya(m);a=p?e[g][m]:e[d[m]+u];switch(n){case 1:s[m]=m-l.s.c;break;case 2:s[m]=d[m];break;case 3:s[m]=c.header[m-l.s.c];break;default:if(a==null)a={w:"__EMPTY",t:"s"};o=f=Pa(a,null,c);v=b[f]||0;if(!v)b[f]=1;else{do{o=f+"_"+v++}while(b[o]);b[f]=v;b[o]=1}s[m]=o;}}g=l.s.r+i;t._read=function(){while(g<=l.e.r){if((k[g-1]||{}).hidden)continue;var r=Tw(e,l,g,d,n,s,p,c);++g;if(r.isempty===false||(n===1?c.blankrows!==false:!!c.blankrows)){t.push(r.row);return}}return t.push(null)};return t}var Xw={to_json:jw,to_html:Gw,to_csv:Vw,set_readable:zw};if(typeof vm!=="undefined")e.parse_xlscfb=vm;e.parse_zip=Xb;e.read=iw;e.readFile=sw;e.readFileSync=sw;e.write=gw;e.writeFile=bw;e.writeFileSync=bw;e.writeFileAsync=kw;e.utils=Ww;e.writeXLSX=pw;e.writeFileXLSX=ww;e.SSF=Ve;if(typeof Xw!=="undefined")e.stream=Xw;if(typeof Ke!=="undefined")e.CFB=Ke;if(typeof require!=="undefined"){var $w=undefined;if(($w||{}).Readable)zw($w.Readable)}}if(typeof exports!=="undefined")make_xlsx_lib(exports);else if(typeof module!=="undefined"&&module.exports)make_xlsx_lib(module.exports);else if(typeof define==="function"&&define.amd)define("xlsx",function(){if(!XLSX.version)make_xlsx_lib(XLSX);return XLSX});else make_xlsx_lib(XLSX);if(typeof window!=="undefined"&&!window.XLSX)try{window.XLSX=XLSX}catch(e){}
 </script>
 <script>
-/* ================= helpers ================= */
+/* ================= 11. helpers ================= */
 var $=function(i){return document.getElementById(i)};
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 function jq(s){return JSON.stringify(String(s)).replace(/"/g,'&quot;')}
@@ -330,9 +374,9 @@ var LVLTAG={ok:'t-ok',warn:'t-warn',bad:'t-bad'};
 var KC={ok:'var(--ok)',warn:'var(--warn)',bad:'var(--bad)'};
 function worst(a,b){var o={ok:0,warn:1,bad:2};return o[b]>o[a]?b:a}
 
-/* ================= state ================= */
+/* ================= 12. state ================= */
 var DB=null, RAW=[], SEEN={}, LASTRES=null, CHECK={};
-var STATUS_RULES_KEY='component_checker_status_rules_v3';
+var STATUS_RULES_KEY='component_checker_status_rules_v4';
 function loadStatusRules(){
   try{
     var saved=JSON.parse(window.localStorage.getItem(STATUS_RULES_KEY)||'{}');
@@ -351,11 +395,8 @@ function ensureStatusRules(){
   if(!DB)return;
   DB.statusN.forEach(function(g,S){if(CFG.lvl[S]==null)CFG.lvl[S]=guessLevel(S)});
 }
-function statusRuleName(status,level){
-  return LVLNAME[level];
-}
 /* กฎสำหรับ status ที่ "พบ" ใน Discon Master เท่านั้น (การไม่พบในไฟล์นี้เลยถือเป็น 'ok' เสมอ โดยไม่ผ่านฟังก์ชันนี้)
-   ค่าเริ่มต้น: To be discontinued = แค่เตือน, Old design = ระวัง */
+   ยืนยันจาก Biin แล้วว่า: To be discontinued = แค่เตือน (เหลือง), Old design = ระวัง (แดง) */
 function guessLevel(S){
   if(S==='')return 'bad';                                    /* อยู่ใน watch list แต่ status ว่าง — ไม่รู้ความรุนแรง ต้องระวังสุด */
   if(/DISCONTINU|เลิกใช้|ยกเลิก|OBSOLETE|CANCEL/.test(S))return 'warn';
@@ -375,7 +416,7 @@ function statusTag(st,found){
   return '<span class="tag '+LVLTAG[lvlOf(st)]+'">'+esc(st)+'</span>';
 }
 
-/* ================= reading ================= */
+/* ================= 13. reading — อ่านไฟล์ → หา header row → แยกชีท bom/tx/forecast ================= */
 function readTables(file){
   return new Promise(function(res,rej){
     var fr=new FileReader();
@@ -414,8 +455,16 @@ function detectHeaderRow(rows){
             req:findColTx(H,'req'),item:findColTx(H,'item'),doctype:findColTx(H,'doctype'),release:findColTx(H,'release'),
             text:findColTx(H,'text'),potext:findColTx(H,'potext')};
     var kind='unknown',score=0,useCols=cols;
-    if(cols.material>=0&&cols.component>=0){
-      kind='bom';score=50+(cols.customer>=0?10:0)+(cols.desc>=0?5:0)+(cols.status>=0?8:0);
+    /* ชีท Master ไม่จำเป็นต้องมีคอลัมน์ครบทุกชีท — บางชีทมีแค่ COMPONENT CODE (ไม่มี TU),
+       บางชีทมีแค่ TU Code (ไม่มี COMPONENT CODE เลย เช่นลิสต์ SKU/สินค้าสำเร็จรูปที่เลิกขาย)
+       ทั้งสองแบบยังต้องถือเป็น Master แล้วเอาไปรวมกับชีทอื่น ไม่ใช่ทิ้งไปทั้งชีท
+       เงื่อนไข: ต้องมีกุญแจอย่างน้อย 1 อัน (component หรือ material) + มีคอลัมน์แบบ Master อีกอย่างน้อย 1 อัน
+       (ไม่นับตัวกุญแจเอง กันไม่ให้ไฟล์ PR ที่มีคอลัมน์ชื่อ "Material" เหมือนกันหลุดมาเป็น bom โดยไม่มีคอลัมน์อื่นยืนยัน)
+       และต้องไม่มีคอลัมน์เดือนปน ไม่งั้นจะไปชนกับไฟล์ Forecast pivot แบบเก่า */
+    var hasKey=cols.component>=0||cols.material>=0;
+    var otherMasterField=cols.customer>=0||cols.status>=0||cols.desc>=0||cols.dateUpdate>=0||cols.remark>=0||cols.sourceData>=0;
+    if(hasKey&&months.length===0&&otherMasterField){
+      kind='bom';score=50+(cols.component>=0?15:0)+(cols.material>=0?12:0)+(cols.customer>=0?10:0)+(cols.desc>=0?5:0)+(cols.status>=0?8:0);
     } else if(tx.component>=0&&tx.qty>=0&&tx.date>=0){
       /* ไฟล์รายการ PR/PO ที่มีวันที่ส่งจริง — ให้คะแนนสูงกว่า forecast pivot แบบเดา เพราะข้อมูลชัดเจนกว่า */
       kind='tx';score=45+(tx.desc>=0?5:0)+(tx.unit>=0?3:0)+(tx.doc>=0?3:0);useCols=tx;
@@ -438,12 +487,12 @@ function monthCols(headerRow,cols){
   return out;
 }
 
-/* ================= ingest ================= */
+/* ================= 14. ingest: อ่านแถวดิบเข้า db.bom/db.fc/db.tx/db.tuOnly ================= */
 function isBlank(r){if(!r)return true;for(var i=0;i<r.length;i++){if(r[i]!=null&&String(r[i]).trim()!=='')return false;}return true}
 function push(map,k,v){if(!k)return;var a=map.get(k);if(a)a.push(v);else map.set(k,[v])}
 
 function build(tables){
-  var db={bom:[],fc:[],tx:[],months:[],byMat:new Map(),byCust:new Map(),byCompBom:new Map(),
+  var db={bom:[],fc:[],tx:[],tuOnly:[],months:[],byMat:new Map(),byCust:new Map(),byCompBom:new Map(),byMatOnly:new Map(),
           fcByComp:new Map(),statusRaw:new Map(),statusN:new Map(),joined:[],keys:[],comps:[],hasTx:false,
           info:{tables:[],dropBom:0,dropFc:0,dropTx:0,blank:0,badNum:0,badNumEx:[],badDate:0,badDateEx:[],rowsBom:0,rowsFc:0,rowsTx:0}};
   var monthKey=new Map();
@@ -455,17 +504,26 @@ function build(tables){
       t.rows.forEach(function(r,ri){
         if(isBlank(r)){db.info.blank++;return;}
         var comp=c.component>=0?nk(r[c.component]):'';
-        if(!comp){db.info.dropBom++;return;}
+        var mat=c.material>=0?nk(r[c.material]):'';
+        if(!comp&&!mat){db.info.dropBom++;return;}
         var du=c.dateUpdate>=0?parseDateCell(r[c.dateUpdate]):null;
-        var row={mat:c.material>=0?nk(r[c.material]):'',cust:c.customer>=0?nk(r[c.customer]):'',comp:comp,
-                 desc:c.desc>=0?(r[c.desc]==null?'':String(r[c.desc]).trim()):'',
+        var common={desc:c.desc>=0?(r[c.desc]==null?'':String(r[c.desc]).trim()):'',
                  status:c.status>=0?String(r[c.status]==null?'':r[c.status]).trim():'',
                  dateUpdate:du?fmtDate(du):(c.dateUpdate>=0&&r[c.dateUpdate]!=null?String(r[c.dateUpdate]):''),
                  remark:c.remark>=0?(r[c.remark]==null?'':String(r[c.remark]).trim()):'',
                  sourceData:c.sourceData>=0?(r[c.sourceData]==null?'':String(r[c.sourceData]).trim()):'',
                  src:t.file+' / '+t.sheet+' แถว '+(t.headerRow+ri+2)};
-        db.bom.push(row);
-        push(db.byMat,row.mat,row); push(db.byCust,row.cust,row); push(db.byCompBom,row.comp,row);
+        if(comp){
+          var row=Object.assign({mat:mat,cust:c.customer>=0?nk(r[c.customer]):'',comp:comp},common);
+          db.bom.push(row);
+          push(db.byMat,row.mat,row); push(db.byCust,row.cust,row); push(db.byCompBom,row.comp,row);
+        } else {
+          /* มี TU/Material Code แต่ไม่มี COMPONENT CODE เลย — เช่นลิสต์ SKU สินค้าสำเร็จรูปที่เลิกขาย
+             ไม่มีกุญแจให้ผูกกับ PR ได้ (PR ผูกด้วย component เท่านั้น) แต่ยังต้องค้นหาได้ด้วย TU/Material Code */
+          var row2=Object.assign({mat:mat},common);
+          db.tuOnly.push(row2);
+          push(db.byMatOnly,mat,row2);
+        }
       });
       db.info.rowsBom+=t.rows.length;
     } else if(t.kind==='forecast'){
@@ -529,13 +587,19 @@ function build(tables){
   });
   db.months.sort(function(a,b){return a.y-b.y||a.m-b.m});
   db.bom.forEach(function(r){if(r.status!=='')registerStatus(db,r.status)});
+  db.tuOnly.forEach(function(r){if(r.status!=='')registerStatus(db,r.status)});
   db.compStatus=compStatusMap(db);
+  db.tuOnlyJoined=buildTuOnlyJoined(db);
   db.mode=db.fc.length>0?'compare':'masterOnly';
   db.joined=join(db);
+  db.masterOnlyExtra=buildMasterOnlyExtra(db);
   db.comps=compAgg(db);
   db.keys=buildKeys(db);
   return db;
 }
+/* ================= 15. derived views: join Master+PR, status ต่อ component, pool สำรองไว้ค้นหา =================
+   ฟังก์ชันด้านล่างนี้ทำงาน "หลัง" ingest เสร็จแล้วเท่านั้น — รับ db ที่ผ่าน build() มาแล้วไปคำนวณมุมมองต่างๆ
+   (ตารางที่เห็นบนจอ, สถานะต่อ component, และชุดสำรองไว้ให้ช่องค้นหาหาเจอ แม้ไม่โผล่ในตารางเบราส์ปกติ) */
 /* ค่า status ที่ "เชื่อได้" ของ component หนึ่งตัว — ใช้ byCompBom (ทุกแถวใน Master ไม่ว่า status จะว่างหรือไม่) เพื่อแยกให้ชัดว่า
    "พบใน watch list" (found:true) กับ "ไม่พบเลย" (found:false) เป็นคนละเรื่องกัน — ไม่พบ = ปกติ (ok) เสมอ ไม่ใช่ข้อมูลขาดหาย */
 function canonicalStatus(db,comp,fallbackList){
@@ -570,28 +634,62 @@ function registerStatus(db,st){
 /* แถวใน Forecast/PR ของ component เดียวกันหลายแถวถือเป็น "ผิดปกติ" ก็ต่อเมื่อมาจากไฟล์ pivot รายเดือน
    (ปกติควรมีแค่ 1 แถวต่อ component) — ถ้ามาจากไฟล์ PR แบบรายการ หลายแถวคือเรื่องปกติ (คนละใบขอซื้อ) ไม่ใช่ปัญหา */
 function dupWarnOf(fs){ return fs.length>1 && fs.every(function(r){return r.srcType!=='tx'}); }
+function mkJoinedRow(db,x,comp){
+  var M=masterInfo(db,comp);
+  var fs=db.fcByComp.get(comp);
+  var n=fs?fs.length:0, dw=fs?dupWarnOf(fs):false;
+  return {comp:comp,found:M.found,
+          mat:M.mat,cust:M.cust,masterDesc:M.desc,dateUpdate:M.dateUpdate,remark:M.remark,sourceData:M.sourceData,
+          status:M.status,statusConflict:M.conflict,
+          desc:(x&&x.desc)||M.desc||'',unit:x?x.unit:'',vals:x?x.vals:null,total:x?x.total:null,
+          dup:n,dupWarn:dw,inBom:M.found,inFc:!!x,
+          isTx:!!(x&&x.srcType==='tx'),deliveryDate:x?x.deliveryDate:null,pr:x?x.pr:null,reqtrack:x?x.reqtrack:null,
+          req:x?x.req:null,doctype:x?x.doctype:null,release:x?x.release:null,item:x?x.item:null,
+          text:x?x.text:null,potext:x?x.potext:null,
+          src:M.src+(x?(M.src?' + ':'')+x.src:'')};
+}
 function join(db){
   var J=[];
-  function mk(x,comp){
-    var M=masterInfo(db,comp);
-    var fs=db.fcByComp.get(comp);
-    var n=fs?fs.length:0, dw=fs?dupWarnOf(fs):false;
-    return {comp:comp,found:M.found,
-            mat:M.mat,cust:M.cust,masterDesc:M.desc,dateUpdate:M.dateUpdate,remark:M.remark,sourceData:M.sourceData,
-            status:M.status,statusConflict:M.conflict,
-            desc:(x&&x.desc)||M.desc||'',unit:x?x.unit:'',vals:x?x.vals:null,total:x?x.total:null,
-            dup:n,dupWarn:dw,inBom:M.found,inFc:!!x,
-            isTx:!!(x&&x.srcType==='tx'),deliveryDate:x?x.deliveryDate:null,pr:x?x.pr:null,reqtrack:x?x.reqtrack:null,
-            req:x?x.req:null,doctype:x?x.doctype:null,release:x?x.release:null,item:x?x.item:null,
-            text:x?x.text:null,potext:x?x.potext:null,
-            src:M.src+(x?(M.src?' + ':'')+x.src:'')};
-  }
   if(db.mode==='compare'){
-    /* ยึดข้อมูล PR เป็นหลักตามที่ Biin สั่ง — โชว์เฉพาะแถวที่มีรายการ PR จริง ไม่เอา Master ที่ไม่มี PR มาปนในตารางหลัก */
-    db.fc.forEach(function(x){J.push(mk(x,x.comp))});
+    /* ยึดข้อมูล PR เป็นหลักตามที่ Biin สั่ง — โชว์เฉพาะแถวที่มีรายการ PR จริง ไม่เอา Master ที่ไม่มี PR มาปนในตารางหลัก
+       TU-only entry (ไม่มี component) ก็ผูกกับ PR ไม่ได้อยู่แล้ว จึงไม่โผล่ในตารางหลักโหมดนี้เหมือนกัน — ค้นหาเจอได้ทางเดียว */
+    db.fc.forEach(function(x){J.push(mkJoinedRow(db,x,x.comp))});
   } else {
-    db.byCompBom.forEach(function(b,c){J.push(mk(null,c))});
+    db.byCompBom.forEach(function(b,c){J.push(mkJoinedRow(db,null,c))});
+    J=J.concat(db.tuOnlyJoined);   /* โหมดนี้คือเบราส์ Master ล้วนๆ อยู่แล้ว ให้เห็น TU-only เข้ามาด้วยเลย ไม่ต้องรอค้นหา */
   }
+  return J;
+}
+/* Master entry ที่ไม่มี PR เลย จะไม่อยู่ใน DB.joined (โหมด compare) ตามการออกแบบตารางหลัก —
+   แต่ผู้ใช้ยังต้อง "ค้นหา" เจอ TU Code / Component พวกนี้ได้ ไม่งั้นจะดูเหมือนหาไม่พบทั้งที่มีอยู่จริงใน Master
+   เก็บสำรองไว้เป็นคนละชุด ใช้เฉพาะตอนค้นหา (MT.codes ไม่ว่าง) ไม่ปนกับตารางเบราส์ปกติ */
+function buildMasterOnlyExtra(db){
+  var J=[];
+  if(db.mode==='compare'){
+    db.byCompBom.forEach(function(b,c){
+      if(!db.fcByComp.has(c))J.push(mkJoinedRow(db,null,c));
+    });
+  }
+  return J;
+}
+/* แถวที่มี TU/Material Code แต่ไม่มี COMPONENT CODE เลย (เช่นลิสต์ SKU ที่เลิกขาย) — ผูกกับ PR ไม่ได้ตั้งแต่ต้น
+   (PR เชื่อมด้วย component เท่านั้น) จึงไม่มีวันมีข้อมูล PR ใดๆ แต่ยังต้องหาเจอผ่าน TU/Material Code ได้เสมอ */
+function buildTuOnlyJoined(db){
+  var J=[];
+  db.byMatOnly.forEach(function(rows,mat){
+    var sts=[],descs=[];
+    rows.forEach(function(r){if(sts.indexOf(r.status)<0)sts.push(r.status); if(r.desc&&descs.indexOf(r.desc)<0)descs.push(r.desc)});
+    var nonBlank=sts.filter(function(s){return s!==''});
+    J.push({comp:'',found:true,mat:mat,cust:'',masterDesc:descs[0]||'',
+            dateUpdate:rows.map(function(r){return r.dateUpdate}).filter(Boolean).join(', '),
+            remark:rows.map(function(r){return r.remark}).filter(Boolean).join(', '),
+            sourceData:rows.map(function(r){return r.sourceData}).filter(Boolean).join(', '),
+            status:sts[0]||'',statusConflict:nonBlank.length>1,
+            desc:descs[0]||'',unit:'',vals:null,total:null,
+            dup:rows.length,dupWarn:false,inBom:true,inFc:false,
+            isTx:false,deliveryDate:null,pr:null,reqtrack:null,req:null,doctype:null,release:null,item:null,text:null,potext:null,
+            src:rows.map(function(r){return r.src}).join(' + ')});
+  });
   return J;
 }
 /* status ของแต่ละ component: ให้ความสำคัญกับค่าจาก Master ก่อนเสมอ
@@ -643,12 +741,13 @@ function buildKeys(db){
   db.byMat.forEach(function(a,k){add(k,'MATERIAL',a.length+' component')});
   db.byCust.forEach(function(a,k){add(k,'CUSTOMER',a.length+' รายการ')});
   db.comps.forEach(function(c){add(c.comp,'COMPONENT',c.desc)});
+  db.byMatOnly.forEach(function(a,k){add(k,'MATERIAL',a[0].desc||'ไม่มี COMPONENT CODE')});
   K.forEach(function(x){x.dn=nk(x.d)});
   K.sort(function(a,b){return a.k<b.k?-1:a.k>b.k?1:0});
   return K;
 }
 
-/* ================= files ================= */
+/* ================= 16. files — จัดการไฟล์ 2 ช่อง (Master/PR) + rebuild ================= */
 var MASTERFILES={}, PRFILES={};
 var ZONESRC={master:null,pr:null};           /* 'folder' เมื่อ zone นั้นผูกกับโฟลเดอร์อยู่ ไม่ใช่ null */
 var DIRHANDLE={master:null,pr:null};         /* FileSystemDirectoryHandle ที่ถืออยู่ใน memory ของเซสชันนี้ */
@@ -742,12 +841,13 @@ function rebuildAll(){
   })(0);
 }
 
-/* ================= เชื่อมกับโฟลเดอร์ที่ Sync ไว้ (File System Access API) =================
+/* ================= 17. folder-link — เชื่อมกับโฟลเดอร์ที่ Sync ไว้ (File System Access API) =================
    ทำงาน 100% ในเครื่อง ไม่มีการเชื่อมต่อเน็ตใดๆ — ต่างจากการดึงตรงจาก SharePoint URL
    รองรับเฉพาะ Chrome/Edge (Chromium) เท่านั้น — Firefox/Safari ยังไม่มี showDirectoryPicker */
 var SKIP_FILE_RE=/^~\$/;              /* ไฟล์ lock ชั่วคราวของ Excel ที่ค้างในโฟลเดอร์ตอนเปิดไฟล์อยู่ */
 var FILE_EXT_RE=/\.(xlsx|xlsm|xls|csv|txt)$/i;
 
+/* ---- การกระทำระดับฟีเจอร์: เลือก/สแกน/ยืนยันสิทธิ์/ยกเลิกการเชื่อมโฟลเดอร์ (ใช้ idbOpen/idbSet ด้านบน) ---- */
 async function pickFolder(zone){
   if(!FS_SUPPORTED){alert('เบราว์เซอร์นี้ยังไม่รองรับการเชื่อมโฟลเดอร์ — ใช้ Chrome หรือ Edge เวอร์ชันล่าสุด หรืออัปโหลดไฟล์แทนได้ตามปกติ');return;}
   var handle;
@@ -902,7 +1002,7 @@ function remap(ti,field,ci){
   MT.shown=0; renderAll(); if(MT.codes.length)runSearch();
 }
 
-/* ================= ตารางรวม ================= */
+/* ================= 18. ตารางรวม — mtHead/mtRow/renderMaster ================= */
 var MT={filter:'',codes:[],stat:{},levelFilter:null,onlyIssue:false,shown:0,view:[],base:[],sort:{k:'comp',dir:1},PAGE:200,MAX:3000};
 function rowLevel(r){
   var lv='ok',notes=[],wrongBad=false,wrongWarn=false;
@@ -912,7 +1012,7 @@ function rowLevel(r){
     if(nk(r.status)===''){lv='bad';notes.push('พบใน watch list แต่ status ว่าง — ไม่รู้ความรุนแรง');}
     else{
       lv=lvlOf(r.status);
-      notes.push(lv==='bad'?('status: "'+r.status+'" — ระวัง'):('status: "'+r.status+'" — แค่เตือน'));
+      notes.push(lv==='bad'?('status: "'+r.status+'" — ระวัง'):('status: "'+r.status+'" — แค่เตือน ยังพอสั่งได้'));
     }
     if(r.statusConflict){lv=worst(lv,'warn');notes.push('status ไม่ตรงกันระหว่างหลายแถวในไฟล์ Master');}
     if(DB.mode==='compare'&&r.inFc&&lv!=='ok'){
@@ -923,13 +1023,25 @@ function rowLevel(r){
   return {lv:lv,notes:notes,wrongBad:wrongBad,wrongWarn:wrongWarn};
 }
 function stKeyOf(r){return !r.found?'(ไม่พบใน watch list)':(nk(r.status)===''?'(status ว่าง)':r.status)}
+/* r.mat / r.cust อาจเป็นสตริงที่รวมหลายค่าด้วย ", " (component ผูกได้หลาย TU/Customer) —
+   เทียบแบบตรงเป๊ะทั้งสตริงจะไม่เจอ ต้องแยกทีละค่าก่อนเทียบ */
+function codeHit(str,codes){
+  if(!str)return false;
+  var parts=String(str).split(',');
+  for(var i=0;i<parts.length;i++)if(codes.indexOf(nk(parts[i]))>=0)return true;
+  return false;
+}
 /* กรองด้วยข้อความอิสระ + รายการ code จากช่องค้นหา + ชิป status — ยังไม่กรองด้วยระดับ (เพื่อให้แถบสรุปนับได้ถูกก่อนกดกรอง) */
 function mtBase(){
   var f=nk(MT.filter), stKeys=Object.keys(MT.stat).filter(function(k){return MT.stat[k]});
   var codes=MT.codes;
-  return DB.joined.filter(function(r){
+  /* ตอนกำลังค้นหาด้วย code (ไม่ใช่แค่เบราส์ตาราง) ให้รวม Master ที่ไม่มี PR เข้ามาด้วย (รวมทั้ง TU-only ที่ไม่มี component เลย)
+     ไม่งั้น TU/Component ที่มีจริงใน Master แต่ยังไม่มี PR จะดูเหมือน "หาไม่พบ" ทั้งที่จริงมีอยู่
+     (โหมด masterOnly ไม่ต้องเติมเพราะ DB.joined มี tuOnlyJoined รวมอยู่แล้วตั้งแต่ join()) */
+  var pool=(codes.length&&DB.mode==='compare')?DB.joined.concat(DB.masterOnlyExtra).concat(DB.tuOnlyJoined):DB.joined;
+  return pool.filter(function(r){
     if(codes.length){
-      var hit=codes.indexOf(nk(r.comp))>=0||codes.indexOf(nk(r.mat))>=0||codes.indexOf(nk(r.cust))>=0||codes.indexOf(nk(r.pr))>=0;
+      var hit=codes.indexOf(nk(r.comp))>=0||codeHit(r.mat,codes)||codeHit(r.cust,codes)||codes.indexOf(nk(r.pr))>=0;
       if(!hit)return false;
     }
     if(f&&nk(r.mat).indexOf(f)<0&&nk(r.cust).indexOf(f)<0&&nk(r.comp).indexOf(f)<0&&nk(r.desc).indexOf(f)<0&&nk(r.pr).indexOf(f)<0&&nk(r.masterDesc).indexOf(f)<0)return false;
@@ -1050,7 +1162,7 @@ function mtRow(r,q){
 }
 function debounce(fn,ms){var t;return function(){var a=arguments,me=this;clearTimeout(t);t=setTimeout(function(){fn.apply(me,a)},ms)}}
 
-/* ================= autocomplete ================= */
+/* ================= 19. autocomplete ================= */
 var AC={items:[],sel:-1,tok:null};
 function curToken(ta){
   var p=ta.selectionStart, s=ta.value.slice(0,p);
@@ -1097,7 +1209,7 @@ function acPick(i){
   runSearch();
 }
 
-/* ================= search ================= */
+/* ================= 20. search — extractCodes + runSearch ================= */
 function clearSearch(){$('q').value='';MT.codes=[];if(DB)renderMaster();acHide()}
 function uniq(a){return a.filter(function(v,i){return a.indexOf(v)===i})}
 function kpi(l,v,c){return '<div class="kpi"><span class="muted small">'+l+'</span><b'+(c?' style="color:'+KC[c]+'"':'')+'>'+fmt(v)+'</b></div>'}
@@ -1129,7 +1241,9 @@ function runSearch(){
   MT.levelFilter=null;
   renderMaster();
   if(codes.length){
-    var found={}; MT.base.forEach(function(r){[r.comp,r.mat,r.cust,r.pr].forEach(function(v){if(v)found[nk(v)]=1})});
+    var found={};
+    function mark(v){if(!v)return;String(v).split(',').forEach(function(p){var n=nk(p);if(n)found[n]=1})}
+    MT.base.forEach(function(r){mark(r.comp);mark(r.mat);mark(r.cust);mark(r.pr)});
     var missing=codes.filter(function(c){return !found[c]});
     if(missing.length)$('fstat').innerHTML='<span class="tag t-warn">ไม่พบใน Master/PR ที่โหลดไว้:</span> '+missing.map(esc).join(', ');
   }
@@ -1138,7 +1252,7 @@ function hi(t,q){t=String(t==null?'':t); if(!q||!t)return esc(t);
   var i=t.toUpperCase().indexOf(q); if(i<0)return esc(t);
   return esc(t.slice(0,i))+'<span class="hl">'+esc(t.slice(i,i+q.length))+'</span>'+esc(t.slice(i+q.length));}
 
-/* ================= check tab ================= */
+/* ================= 21. check tab ================= */
 function renderCheck(){
   if(!DB){$('check').innerHTML='<div class="card muted">โหลดไฟล์ก่อน</div>';return;}
   var compareMode=DB.mode==='compare';
@@ -1162,7 +1276,7 @@ function renderCheck(){
     var vs=Object.keys(g.variants);
     if(vs.length>1)spell.push({s:S,vs:vs.map(function(v){return v+' ('+g.variants[v]+')'}).join('  ·  ')});
   });
-  /* ★ รายการหลักที่ผู้ใช้ขอ — แยก 2 ระดับตามสี: ระวัง (แดง) กับ แค่เตือน (เหลือง) */
+  /* ★ รายการหลักที่ผู้ใช้ขอ — แยก 2 ระดับตามที่ยืนยัน: ระวัง (แดง) กับ แค่เตือน (เหลือง) */
   if(compareMode){
     DB.joined.forEach(function(r){
       var L=rowLevel(r);
@@ -1176,7 +1290,7 @@ function renderCheck(){
     var S=p[0],g=p[1],js=jq(S);
     var opts=['warn','bad'].map(function(l){
       return '<label style="margin-right:12px"><input type="radio" name="lv_'+strip(S)+'" '+(CFG.lvl[S]===l?'checked':'')+
-        ' onchange="setStatusLevel('+js+',\''+l+'\');renderAll();if(MT.codes.length)runSearch()"> <span class="tag '+LVLTAG[l]+'">'+statusRuleName(S,l)+'</span></label>';
+        ' onchange="setStatusLevel('+js+',\''+l+'\');renderAll();if(MT.codes.length)runSearch()"> <span class="tag '+LVLTAG[l]+'">'+LVLNAME[l]+'</span></label>';
     }).join('');
     var vs=Object.keys(g.variants);
     return '<tr><td>'+esc(S===''?'(ว่าง)':S)+(vs.length>1?'<br><span class="muted small">รวมการสะกด '+vs.length+' แบบ: '+esc(vs.join(' / '))+'</span>':'')+
@@ -1205,8 +1319,8 @@ function renderCheck(){
   }
   var h='';
   if(compareMode){
-    h+=wrongBox('bad','⚠ PR ที่ต้องระวัง — status ใน Master คือ "ระวัง" แต่ยังมี PR สั่งซื้ออยู่',wrongBad,'wrongBad','wrongpr')+
-       wrongBox('warn','⚠ PR ที่ควรตรวจสอบ — status ใน Master อยู่ระดับเตือน (แค่เตือน/ระวัง) แต่ยังมี PR สั่งซื้ออยู่',wrongWarn,'wrongWarn','wrongpr');
+    h+=wrongBox('bad','⚠ PR ที่ต้องระวัง — status ใน Master อยู่ระดับ "ระวัง" แต่ยังมี PR สั่งซื้ออยู่',wrongBad,'wrongBad','wrongpr')+
+       wrongBox('warn','⚠ PR ที่ควรตรวจสอบ — status ใน Master อยู่ระดับ "แค่เตือน" แต่ยังมี PR สั่งซื้ออยู่',wrongWarn,'wrongWarn','wrongpr');
   } else {
     h+='<div class="card"><h2>โหมดปัจจุบัน: ค้นหาจาก Master อย่างเดียว</h2>'+
       '<div class="muted small">ยังไม่ได้อัปโหลดไฟล์ PR — เครื่องมือแสดงแค่ status จาก Master ให้ค้นหาเท่านั้น เพิ่มไฟล์ PR เข้ามาเมื่อไหร่ ระบบจะเทียบให้อัตโนมัติว่ามีการเปิด PR ผิดหรือไม่</div></div>';
@@ -1217,7 +1331,7 @@ function renderCheck(){
       kpi('Master status ว่าง',noStatus.length,noStatus.length?'bad':'ok')+
     '</div></div>'+
     '<div class="card"><h2>ตั้งกฎ: status แต่ละค่าอยู่ระดับไหน <button class="q" onclick="info(\'status\')">?</button></h2>'+
-      '<div class="muted small" style="margin-bottom:8px">ค่าที่เลือกไว้ให้เป็นแค่การเดาจากคำ — <b>กรุณายืนยันเอง</b> เพราะไฟเขียว/เหลือง/แดงทั้งเครื่องมือ (รวมทั้งกล่อง "PR ที่เปิดผิด" ด้านบน) อิงตามตารางนี้ ทุกค่าที่อยู่ใน watch list ถือว่าไม่ ok อยู่แล้วโดยธรรมชาติ โดยค่าเริ่มต้นคือ <code>To be</code> = "แค่เตือน" และ <code>Old design</code> = "ระวัง" ส่วน status อื่นเลือกได้ตามจริง<br>'+
+      '<div class="muted small" style="margin-bottom:8px">ค่าที่เลือกไว้ให้เป็นแค่การเดาจากคำ — <b>กรุณายืนยันเอง</b> เพราะไฟเขียว/เหลือง/แดงทั้งเครื่องมือ (รวมทั้งกล่อง "PR ที่เปิดผิด" ด้านบน) อิงตามตารางนี้ ทุกค่าที่อยู่ใน watch list ถือว่าไม่ ok อยู่แล้วโดยธรรมชาติ เลือกได้แค่ "แค่เตือน" หรือ "ระวัง"<br>'+
       'การสะกดต่างกัน เช่น <code>Old design</code> กับ <code>OLD DESIGN</code> ระบบรวมเป็นค่าเดียวกันให้แล้ว จะได้ไม่ต้องตั้งกฎซ้ำ<br>'+
       '<span class="tag t-ok">บันทึกค่าที่เลือกไว้ใน Local Storage ของเครื่องนี้</span> เมื่อเปิดไฟล์หรืออัปโหลดข้อมูลใหม่ ค่าที่เคยตั้งจะถูกนำกลับมาใช้</div>'+
       '<table style="width:auto"><thead><tr><th>status ที่พบในไฟล์</th><th class="num">จำนวนแถว</th><th>ระดับ</th></tr></thead><tbody>'+stRows+'</tbody></table></div>'+
@@ -1232,7 +1346,7 @@ function renderCheck(){
   $('check').innerHTML=h;
 }
 
-/* ================= import tab ================= */
+/* ================= 22. import tab ================= */
 function renderImport(){
   if(!DB){$('import').innerHTML='<div class="card muted">โหลดไฟล์ก่อน</div>';return;}
   var kindName={bom:'Master (Discon watch list)',forecast:'Forecast แบบ pivot รายเดือน (แบบเก่า)',tx:'PR/PO แบบรายการ (มี Delivery Date จริง)',unknown:'ไม่ใช้ชีทนี้'};
@@ -1279,7 +1393,7 @@ function renderImport(){
   $('import').innerHTML=h;
 }
 
-/* ================= method tab ================= */
+/* ================= 23. method tab ================= */
 function renderMethod(){
   var compareMode=DB&&DB.mode==='compare';
   $('method').innerHTML=
@@ -1328,12 +1442,12 @@ function renderMethod(){
   '<table><thead><tr><th>เงื่อนไข</th><th>ผลลัพธ์</th><th>ทำไม</th></tr></thead><tbody>'+
     '<tr><td>ไม่พบใน Master (watch list) เลย</td><td><span class="tag t-ok">✓ ปกติ</span></td><td>ไม่ได้อยู่ในบัญชีของมีปัญหา — เป็นค่าเริ่มต้นของ component ส่วนใหญ่</td></tr>'+
     '<tr><td>พบใน Master แต่ status ว่าง</td><td><span class="tag t-bad">✕ ระวัง</span></td><td>ไม่รู้ความรุนแรง ข้อมูลไม่สมบูรณ์</td></tr>'+
-    '<tr><td>พบใน Master, status = To be discontinued</td><td><span class="tag t-warn">! แค่เตือน</span></td><td>ตามที่ตั้งค่าเริ่มต้น — ให้ตรวจสอบก่อนดำเนินการ</td></tr>'+
-    '<tr><td>พบใน Master, status = Old design</td><td><span class="tag t-bad">✕ ระวัง</span></td><td>ตามที่ตั้งค่าเริ่มต้น — ต้องตรวจสอบก่อนดำเนินการ</td></tr>'+
-    '<tr><td>ระดับเตือน (! ) หรือระวัง (✕) <b>+ มีรายการ PR ในโหมด ②</b></td><td>ป้ายพิเศษ "⚠ เปิดผิด?"</td><td><b>นี่คือ highlight หลักที่ขอ</b> — ของอยู่ใน watch list แล้วแต่ยังมีคนสั่งซื้อ แยกกล่องแดง (ระวัง) กับกล่องเหลือง (แค่เตือน) ในแท็บตรวจข้อมูล</td></tr>'+
+    '<tr><td>พบใน Master, status = Old design</td><td><span class="tag t-bad">✕ ระวัง</span></td><td>ตามที่ยืนยัน — ความเสี่ยงมากกว่า</td></tr>'+
+    '<tr><td>พบใน Master, status = To be discontinued</td><td><span class="tag t-warn">! แค่เตือน</span></td><td>ตามที่ยืนยัน — แจ้งล่วงหน้าเฉยๆ</td></tr>'+
+    '<tr><td>ระดับข้างบน (! หรือ ✕) <b>+ มีรายการ PR ในโหมด ②</b></td><td>ป้ายพิเศษ "⚠ เปิดผิด?"</td><td><b>นี่คือ highlight หลักที่ขอ</b> — ของอยู่ใน watch list แล้วแต่ยังมีคนสั่งซื้อ แยกกล่องแดง (ระวัง) กับกล่องเหลือง (แค่เตือน) ในแท็บตรวจข้อมูล</td></tr>'+
     '<tr><td>status ไม่ตรงกันระหว่างหลายแถวใน Master</td><td>ยกระดับเป็นอย่างน้อย <span class="tag t-warn">!</span></td><td>ข้อมูลต้นทางขัดแย้งกันเอง ควรเคลียร์</td></tr>'+
   '</tbody></table>'+
-  '<div class="small muted">ค่าเริ่มต้นคือ "To be discontinued → แค่เตือน" (สีเหลือง) และ "Old design → ระวัง" (สีแดง) คุณสามารถปรับเปลี่ยนได้เองที่แท็บตรวจข้อมูล ส่วน status อื่นที่ไม่รู้จัก ระบบจะตั้งเป็น "แค่เตือน" ไว้ก่อน (ไม่มีทางเป็น "ปกติ" เพราะการอยู่ใน watch list แปลว่ามีเหตุผลบางอย่างเสมอ)</div>'+
+  '<div class="small muted">กฎ "Old design → ระวัง" และ "To be discontinued → แค่เตือน" ตั้งเป็นค่าเริ่มต้นตามที่ยืนยันแล้ว แต่ปรับเปลี่ยนได้เองที่แท็บตรวจข้อมูล ถ้า Master มี status ค่าอื่นที่ไม่รู้จัก ระบบจะตั้งเป็น "แค่เตือน" ไว้ก่อน (ไม่มีทางเป็น "ปกติ" เพราะการอยู่ใน watch list แปลว่ามีเหตุผลบางอย่างเสมอ)</div>'+
 
   '<h3>7. สิ่งที่เครื่องมือนี้ไม่รู้และไม่ควรถูกใช้ตอบ</h3>'+
   '<ul class="small">'+
@@ -1354,7 +1468,7 @@ function expMaster(){
   var head=['ตรวจ','เหตุผล','COMPONENT','STATUS (Master)'].concat(mtCols().map(function(c){return c[0]}));
   var rows=MT.view.map(function(r){
     var L=rowLevel(r);
-    var base=[r.found?statusRuleName(r.status,L.lv):LVLNAME[L.lv],L.notes.join(' · '),r.comp,r.status];
+    var base=[LVLNAME[L.lv],L.notes.join(' · '),r.comp,r.status];
     return base.concat(mtCols().map(function(c){var v=r[c[1]];return v==null?'':v}));
   });
   dl(csv([head].concat(rows)),DB.mode==='compare'?'pr_vs_master.csv':'master_table.csv');
@@ -1372,7 +1486,7 @@ var EXP={
 };
 function expList(k){dl(csv(EXP[k]()),k+'.csv')}
 
-/* ================= ui ================= */
+/* ================= 24. export / ui / init ================= */
 function show(id){
   ['search','check','import','method','about'].forEach(function(x){
     $(x).style.display=x===id?'':'none';
@@ -1380,12 +1494,12 @@ function show(id){
   });
 }
 var INFO={
-  search:'<h4>พิมพ์ยังไง</h4>พิมพ์แค่บางส่วนก็ได้ ระบบจะขึ้นรายการให้เลือก กดลูกศรขึ้น/ลงแล้ว Enter หรือคลิกเอา<br><br><b>Copy จาก Excel ได้เลย</b> — เลือกทั้งคอลัมน์ code ใน Excel แล้ว Ctrl+C มาวางในช่องนี้ ระบบรับหลายแถวพร้อมกัน ถ้าเผลอเลือกมาหลายคอลัมน์ (มี Tab คั่น) ระบบจะเอาแค่คอลัมน์แรกของแต่ละแถวให้อัตโนมัติ<br><br><h4>ผลลัพธ์ไปไหน</h4>ค้นแล้วไม่มีการ์ดแยกต่อ code — ทุกอย่างไปกรองตารางเดียวที่ด้านล่างให้เลย เพื่อให้ดูหลายรายการพร้อมกันได้ง่าย<br><br><h4>ข้อมูลมาจากไหน</h4>TU Code, Customer, status มาจากไฟล์ Master เสมอ ไม่ว่าจะมีไฟล์ PR หรือไม่',
+  search:'<h4>พิมพ์ยังไง</h4>พิมพ์แค่บางส่วนก็ได้ ระบบจะขึ้นรายการให้เลือก กดลูกศรขึ้น/ลงแล้ว Enter หรือคลิกเอา<br><br><b>Copy จาก Excel ได้เลย</b> — เลือกทั้งคอลัมน์ code ใน Excel แล้ว Ctrl+C มาวางในช่องนี้ ระบบรับหลายแถวพร้อมกัน ถ้าเผลอเลือกมาหลายคอลัมน์ (มี Tab คั่น) ระบบจะเอาแค่คอลัมน์แรกของแต่ละแถวให้อัตโนมัติ<br><br><h4>ผลลัพธ์ไปไหน</h4>ค้นแล้วไม่มีการ์ดแยกต่อ code — ทุกอย่างไปกรองตารางเดียวที่ด้านล่างให้เลย เพื่อให้ดูหลายรายการพร้อมกันได้ง่าย<br><br><h4>ข้อมูลมาจากไหน</h4>TU Code, Customer, status มาจากไฟล์ Master เสมอ ไม่ว่าจะมีไฟล์ PR หรือไม่<br><br><h4>ค้นเจอมากกว่าที่เห็นตอนเบราส์</h4>ตารางหลักตอนมีไฟล์ PR จะโชว์แค่แถวที่มี PR จริง แต่ช่องค้นหานี้ค้นครอบคลุมกว่านั้น — ถ้า TU Code หรือ Component ที่พิมพ์มีอยู่ใน Master แต่ยังไม่มี PR เลย ก็ยังค้นเจอได้ (แถวจะโชว์ขึ้นมาเฉพาะตอนค้นหา ไม่ปนกับตารางเบราส์ปกติ)',
   master:'<h4>ตารางนี้คืออะไร</h4>ถ้าอัปโหลดแค่ไฟล์ Master — ตารางแสดงรายชื่อทุก component ใน watch list พร้อม status<br><br>ถ้าเพิ่มไฟล์ PR เข้ามา — ตารางจะยึด PR เป็นหลัก แสดง<b>ทุกรายการ PR แบบไม่ยุบรวม</b> (1 แถว = 1 ใบขอซื้อ 1 component) พร้อม status ล่าสุดจาก Master แปะไว้ทุกแถว — component ใน Master ที่ไม่มี PR จะไม่โผล่ในตารางนี้<br><br><b>คอลัมน์ตรึงซ้าย</b> (ตรวจ/COMPONENT/STATUS) จะอยู่กับที่เวลาเลื่อนดูคอลัมน์อื่นทางขวา — ตารางมีครบทุกคอลัมน์จากทั้งสองไฟล์<br><br><b>กด KPI ปกติ/แค่เตือน/ระวัง ด้านบนได้</b> เพื่อกรองตารางเฉพาะระดับนั้น',
   check:'<h4>หน้านี้คืออะไร</h4>รายการตรวจก่อนดำเนินการ ทั้งหมดมาจากการเทียบข้อมูลตรงๆ ไม่มีการเดา<br><br>ถ้ามีไฟล์ PR ด้วย สำคัญที่สุดคือ 2 กล่องด้านบน — กล่องแดง "ระวัง" กับกล่องเหลือง "แค่เตือน" เช็คก่อนเรื่องอื่นเสมอ',
-  wrongpr:'<h4>เกณฑ์ที่ใช้ตัด</h4>เอา status ล่าสุดของ component นั้นจาก Master มาเทียบกับกฎที่ตั้งไว้ในตาราง "ตั้งกฎ" ด้านล่าง — ถ้าพบใน watch list (ไม่ว่าจะระดับระวังหรือระดับแค่เตือน) และ component นั้นยังมีรายการอยู่ในไฟล์ PR อย่างน้อย 1 แถว จะถูกดึงมาขึ้นในกล่องที่ตรงระดับ<br><br><h4>ทำไมต้องสนใจ</h4>ของที่อยู่ใน watch list แล้วไม่ควรมีการเปิดใบขอซื้อใหม่อีก ถ้ายังมี PR อยู่ แปลว่าอาจมีคนเปิดผิด หรือ Master ยังไม่อัปเดตให้ทันเวลา<br><br><h4>ข้อควรระวัง</h4>ผลตรงนี้ไวต่อกฎที่ตั้งในตาราง "ตั้งกฎ" มาก — ถ้ายังไม่ได้ยืนยันกฎ (โดยเฉพาะ status ที่ไม่รู้จัก) ผลอาจไม่แม่นยำ',
-  status:'<h4>ทำไมต้องตั้งเอง</h4>ระบบเห็นแค่ค่า status ที่มีอยู่ในไฟล์ ค่าเริ่มต้นคือ To be discontinued → แค่เตือน (สีเหลือง) และ Old design → ระวัง (สีแดง) และสามารถปรับเปลี่ยนได้เอง เพราะมีผลต่อทั้งเครื่องมือ รวมถึง 2 กล่อง highlight ด้านบน<br><br>สังเกตว่าเลือกได้ "แค่เตือน" หรือ "ระวัง" — ไม่มีตัวเลือก "ปกติ" เพราะการมีชื่ออยู่ใน watch list แปลว่ามีเหตุผลบางอย่างเสมอ',
-  import:'<h4>หน้านี้มีไว้ทำอะไร</h4>ตอบว่า "ระบบเห็นข้อมูลแค่ไหน" และให้แก้เองได้ถ้าจับผิดคอลัมน์หรือผิดประเภทไฟล์ — เลือกใหม่จาก dropdown แล้วคำนวณใหม่ทั้งหมดทันที'
+  wrongpr:'<h4>เกณฑ์ที่ใช้ตัด</h4>เอา status ล่าสุดของ component นั้นจาก Master มาเทียบกับกฎที่ตั้งไว้ในตาราง "ตั้งกฎ" ด้านล่าง — ถ้าพบใน watch list (ไม่ว่าจะระดับระวังหรือแค่เตือน) และ component นั้นยังมีรายการอยู่ในไฟล์ PR อย่างน้อย 1 แถว จะถูกดึงมาขึ้นในกล่องที่ตรงระดับ<br><br><h4>ทำไมต้องสนใจ</h4>ของที่อยู่ใน watch list แล้วไม่ควรมีการเปิดใบขอซื้อใหม่อีก ถ้ายังมี PR อยู่ แปลว่าอาจมีคนเปิดผิด หรือ Master ยังไม่อัปเดตให้ทันเวลา<br><br><h4>ข้อควรระวัง</h4>ผลตรงนี้ไวต่อกฎที่ตั้งในตาราง "ตั้งกฎ" มาก — ถ้ายังไม่ได้ยืนยันกฎ (โดยเฉพาะ status ที่ไม่รู้จัก) ผลอาจไม่แม่นยำ',
+  status:'<h4>ทำไมต้องตั้งเอง</h4>ระบบเห็นแค่ค่า status ที่มีอยู่ในไฟล์ ค่าที่เดาไว้ให้ (Old design → ระวัง, To be discontinued → แค่เตือน) อาจไม่ตรงกับกฎจริงทั้งหมด ต้องยืนยันเอง เพราะมีผลต่อทั้งเครื่องมือ รวมถึง 2 กล่อง highlight ด้านบน<br><br>สังเกตว่าเลือกได้แค่ "แค่เตือน" หรือ "ระวัง" — ไม่มีตัวเลือก "ปกติ" เพราะการมีชื่ออยู่ใน watch list แปลว่ามีเหตุผลบางอย่างเสมอ ไม่เคยถือเป็นเรื่องปกติ',
+  import:'<h4>หน้านี้มีไว้ทำอะไร</h4>ตอบว่า "ระบบเห็นข้อมูลแค่ไหน" และให้แก้เองได้ถ้าจับผิดคอลัมน์หรือผิดประเภทไฟล์ — เลือกใหม่จาก dropdown แล้วคำนวณใหม่ทั้งหมดทันที<br><br><h4>ไฟล์ที่มีหลายชีท</h4>ถ้า Master มีหลายชีท แต่ละชีทไม่จำเป็นต้องมีคอลัมน์ครบเหมือนกัน — รองรับทั้ง 2 แบบ และเอามารวมกันให้อัตโนมัติ:<ul><li>ชีทที่มีแค่ COMPONENT CODE (ไม่มี TU Code) — เช่น ลิสต์ component ล้วนๆ</li><li>ชีทที่มีแค่ TU/Material Code (ไม่มี COMPONENT CODE เลย) — เช่น ลิสต์ SKU/สินค้าสำเร็จรูปที่เลิกขาย ค้นหาด้วย TU Code ได้ปกติ แต่จะไม่มีวันเชื่อมกับไฟล์ PR ได้ เพราะ PR ผูกด้วย COMPONENT CODE เท่านั้น</li></ul>ขอแค่มีกุญแจอย่างใดอย่างหนึ่ง (COMPONENT CODE หรือ TU/Material Code) และมีคอลัมน์แบบ Master อีกอย่างน้อย 1 อัน (เช่น status, Description) ชีทไหนไม่มีกุญแจเลยทั้งสองแบบจะไม่ถูกใช้ ดูได้จากตารางด้านบนว่าแต่ละชีทถูกจับเป็นประเภทไหน'
 };
 function info(k){$('dlgc').innerHTML=INFO[k]||'';$('dlg').showModal()}
 
